@@ -8,11 +8,10 @@ Mobile-first PWA for managing auto group quotes, documents, and QR scanning.
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **Backend**: Supabase (Auth, Database, Storage)
-- **AI**: Anthropic SDK (document extraction, deed generation, summarisation)
 
 ## Getting Started
 
-1. Copy `.env.local` and fill in your Supabase and Anthropic credentials.
+1. Copy `.env.local` and fill in your Supabase credentials.
 2. Install dependencies:
    ```bash
    npm install
