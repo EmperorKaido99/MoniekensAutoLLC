@@ -50,12 +50,24 @@ Three quote types (`export` | `container` | `towing`) share the `Quote` interfac
 
 Upload (`app/api/documents/upload/`) → store in Supabase Storage → record saved to DB. Signed URLs for private files come from `app/api/documents/signed-url/`.
 
+### Design System
+
+Design tokens are CSS variables in `app/globals.css`: `--navy` (#0D1B2A), `--amber` (#E8970A), `--bg` (#F4F5F7), `--card` (#FFFFFF), `--success`, `--danger`, `--info`. Use utility classes `bg-navy`, `text-amber`, etc. — do not hardcode hex values in components.
+
+All buttons minimum `min-h-[48px]`, body text minimum `text-base` (16px). The primary user is an elderly man — clarity over density on every screen.
+
 ### Component Conventions
 
-- `components/ui/` — generic primitives (Button, Input, etc.), no domain logic
-- `components/<domain>/` — domain-specific components tied to a feature (quotes, documents, scanner, layout)
-- Pages stay thin — delegate rendering to components, data fetching to server actions or API routes
-- Default to Server Components; add `'use client'` only when needed (interactivity, browser APIs, Supabase browser client)
+Built UI primitives in `components/ui/`: `Button`, `Input`, `Card`, `Badge`, `Modal`, `ConfirmDialog`, `LoadingSpinner`. Always use these — do not create one-off inline equivalents.
+
+Layout components in `components/layout/`:
+- `BottomNav` — fixed 4-tab nav (Home, Quotes, Documents, Scan), highlights active tab in amber
+- `TopHeader` — navy header with optional branding row, title, subtitle, and action slot
+- `AuthGuard` — client-side session check wrapper; redirects to `/login` if no session
+
+Every protected page uses the pattern: Server Component checks session via `lib/supabase/server.ts` → redirects if none, renders `<BottomNav />` at the bottom with `pb-24` on the page wrapper.
+
+Pages stay thin — delegate rendering to components, data fetching stays in the Server Component above the return.
 
 ### Skills
 
