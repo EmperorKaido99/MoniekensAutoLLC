@@ -29,7 +29,7 @@ export interface QuotePDFInput {
   created_at:     string;
 }
 
-export function generateQuotePDF(quote: QuotePDFInput, company: CompanySettings): Blob {
+export function generateQuotePDF(quote: QuotePDFInput, company: CompanySettings, qrDataUrl?: string): Blob {
   const doc  = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const PW   = 210;
   const PH   = 297;
@@ -135,6 +135,18 @@ export function generateQuotePDF(quote: QuotePDFInput, company: CompanySettings)
     const lines = doc.splitTextToSize(quote.notes, CW);
     doc.text(lines, M, y + 12);
     y += 12 + lines.length * 5 + 8;
+  }
+
+  // ── Footer band ───────────────────────────────────────────────────────────
+  // ── QR code (above footer) ────────────────────────────────────────────────
+  if (qrDataUrl) {
+    const qrSize = 28;
+    const qrX    = PW - M - qrSize;
+    const qrY    = PH - 24 - qrSize;
+    doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+    doc.setFontSize(6);
+    doc.setTextColor(...MUTED);
+    doc.text('Scan to view', qrX + qrSize / 2, PH - 25, { align: 'center' });
   }
 
   // ── Footer band ───────────────────────────────────────────────────────────

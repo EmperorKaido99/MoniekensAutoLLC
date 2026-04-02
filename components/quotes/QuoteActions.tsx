@@ -2,11 +2,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { createClient as createServerClient } from '@/lib/supabase/client';
 import type { Quote, QuoteStatus } from '@/types/quote';
 import Button from '@/components/ui/Button';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import { FileDown, CheckCircle, Trash2 } from 'lucide-react';
+import QRModal from '@/components/quotes/QRModal';
+import { FileDown, CheckCircle, Trash2, QrCode } from 'lucide-react';
 
 interface Props { quote: Quote; userId: string; }
 
@@ -16,6 +16,7 @@ export default function QuoteActions({ quote, userId }: Props) {
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting,      setDeleting]      = useState(false);
+  const [showQR,        setShowQR]        = useState(false);
 
   async function handleDownloadPDF() {
     if (!quote.pdf_url) return;
@@ -52,6 +53,11 @@ export default function QuoteActions({ quote, userId }: Props) {
             <FileDown size={18} /> Download PDF
           </Button>
         )}
+        {quote.qr_code_data && (
+          <Button variant="secondary" size="lg" fullWidth onClick={() => setShowQR(true)}>
+            <QrCode size={18} /> View QR Code
+          </Button>
+        )}
         {quote.status !== 'paid' && (
           <Button variant="primary" size="lg" fullWidth loading={loadingStatus} onClick={handleMarkPaid}>
             <CheckCircle size={18} /> Mark as Paid
@@ -72,6 +78,15 @@ export default function QuoteActions({ quote, userId }: Props) {
         confirmVariant="danger"
         loading={deleting}
       />
+
+      {quote.qr_code_data && (
+        <QRModal
+          open={showQR}
+          onClose={() => setShowQR(false)}
+          qrPayload={quote.qr_code_data}
+          quoteNumber={quote.quote_number}
+        />
+      )}
     </>
   );
 }

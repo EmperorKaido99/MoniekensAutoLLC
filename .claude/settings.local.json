@@ -8,7 +8,9 @@
       "Bash(npx supabase:*)",
       "Bash(where psql:*)",
       "Bash(curl:*)",
-      "Bash(node supabase/run-schema.mjs)"
+      "Bash(node supabase/run-schema.mjs)",
+      "Bash(npm run:*)",
+      "Bash(cd:*)"
     ]
   },
   "enabledPlugins": {

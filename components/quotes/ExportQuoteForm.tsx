@@ -6,6 +6,7 @@ import type { RateSettings, CompanySettings } from '@/types/settings';
 import type { VehicleType, LineItem } from '@/types/quote';
 import { buildQuoteNumber } from '@/lib/utils/generateQuoteNumber';
 import { generateQuotePDF } from '@/lib/pdf/generateQuotePDF';
+import { generateQRDataUrl } from '@/lib/qr';
 import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
 import VehicleTypeToggle from './VehicleTypeToggle';
@@ -125,13 +126,20 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
     if (!validate()) return;
     setGeneratingPDF(true);
     try {
-      const saved   = await saveQuote('sent');
+      const saved      = await saveQuote('sent');
+      const qrPayload  = `${window.location.origin}/quotes/${saved.id}`;
+      const qrDataUrl  = await generateQRDataUrl(qrPayload);
+
+      // Store QR payload in the quote record
+      const supabase = createClient();
+      await supabase.from('quotes').update({ qr_code_data: qrPayload }).eq('id', saved.id);
+
       const pdfBlob = generateQuotePDF(
         { ...saved, created_at: saved.created_at },
-        company
+        company,
+        qrDataUrl,
       );
 
-      // Upload via API route
       const base64 = await blobToBase64(pdfBlob);
       await fetch('/api/generate-pdf', {
         method: 'POST',
@@ -139,8 +147,7 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
         body: JSON.stringify({ quote_id: saved.id, pdf_base64: base64 }),
       });
 
-      // Get signed URL for sharing
-      const urlRes    = await fetch(`/api/documents/signed-url?path=quotes/${userId}/${saved.id}.pdf`);
+      const urlRes = await fetch(`/api/documents/signed-url?path=quotes/${userId}/${saved.id}.pdf`);
       const { signedUrl } = await urlRes.json();
 
       if (typeof navigator !== 'undefined' && navigator.share) {

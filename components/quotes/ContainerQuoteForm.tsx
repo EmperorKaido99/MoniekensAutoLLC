@@ -6,6 +6,7 @@ import type { RateSettings, CompanySettings } from '@/types/settings';
 import type { LineItem } from '@/types/quote';
 import { buildQuoteNumber } from '@/lib/utils/generateQuoteNumber';
 import { generateQuotePDF } from '@/lib/pdf/generateQuotePDF';
+import { generateQRDataUrl } from '@/lib/qr';
 import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
 import LineItemsEditor, { type ExtraItem } from './LineItemsEditor';
@@ -84,8 +85,12 @@ export default function ContainerQuoteForm({ rates, company, userId }: Props) {
     if (!validate()) return;
     setGeneratingPDF(true);
     try {
-      const saved   = await saveQuote('sent');
-      const pdfBlob = generateQuotePDF({ ...saved, created_at: saved.created_at }, company);
+      const saved     = await saveQuote('sent');
+      const qrPayload = `${window.location.origin}/quotes/${saved.id}`;
+      const qrDataUrl = await generateQRDataUrl(qrPayload);
+      const supabase  = createClient();
+      await supabase.from('quotes').update({ qr_code_data: qrPayload }).eq('id', saved.id);
+      const pdfBlob = generateQuotePDF({ ...saved, created_at: saved.created_at }, company, qrDataUrl);
       const base64  = await blobToBase64(pdfBlob);
       await fetch('/api/generate-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quote_id: saved.id, pdf_base64: base64 }) });
       const urlRes = await fetch(`/api/documents/signed-url?path=quotes/${userId}/${saved.id}.pdf`);
