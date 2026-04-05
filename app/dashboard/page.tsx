@@ -59,13 +59,13 @@ export default async function DashboardPage() {
       {/* Header */}
       <header className="bg-navy text-white px-4 pt-4 pb-6">
         {/* Branding row */}
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-white">
-            <Image src="/images/logo.png" alt="Logo" width={40} height={40} className="w-full h-full object-contain" />
+        <div className="flex items-center gap-4 mb-5">
+          <div className="w-20 h-20 rounded-2xl overflow-hidden shrink-0">
+            <Image src="/images/Logo.png" alt="Logo" width={80} height={80} className="w-full h-full object-cover" />
           </div>
           <div>
-            <p className="font-bold text-base leading-tight">{companyName}</p>
-            <p className="text-white/60 text-xs">Business Management</p>
+            <p className="font-bold text-lg leading-tight">{companyName}</p>
+            <p className="text-white/60 text-sm">Business Management</p>
           </div>
         </div>
 

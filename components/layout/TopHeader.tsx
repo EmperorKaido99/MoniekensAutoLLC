@@ -15,8 +15,8 @@ export default function TopHeader({ title, subtitle, action, showBranding = fals
     <header className="bg-navy text-white px-4 pt-4 pb-5">
       {showBranding && (
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-white">
-            <Image src="/images/logo.png" alt="Logo" width={40} height={40} className="w-full h-full object-contain" />
+          <div className="w-20 h-20 rounded-2xl overflow-hidden shrink-0">
+            <Image src="/images/Logo.png" alt="Logo" width={80} height={80} className="w-full h-full object-cover" />
           </div>
           <div>
             <p className="font-bold text-base leading-tight">MoniekensAutoLLC</p>
