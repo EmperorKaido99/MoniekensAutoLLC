@@ -27,9 +27,11 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
 
-  const [numCars,          setNumCars]          = useState(1);
+  const [numCarsRaw,       setNumCarsRaw]       = useState('1');
   const [isSpecialVehicle, setIsSpecialVehicle] = useState(false);
   const [vehicleName,      setVehicleName]      = useState('');
+  const [carName,          setCarName]          = useState('');
+  const numCars = Math.max(1, parseInt(numCarsRaw) || 1);
   const [loadPrice,        setLoadPrice]        = useState(rates.container_load_price);
   const [lotPayment,       setLotPayment]       = useState(rates.container_lot_payment);
   const [landFee,          setLandFee]          = useState(rates.container_land_fee);
@@ -100,7 +102,7 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
       line_items:     lineItems,
       subtotal:       total,
       total,
-      notes:          notes.trim() || null,
+      notes:          [carName.trim() && `Vehicle: ${carName.trim()}`, notes.trim()].filter(Boolean).join('\n') || null,
     }).select().single();
 
     if (error) throw error;
@@ -179,11 +181,18 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
       <section className="space-y-4">
         <h2 className="text-base font-semibold text-navy uppercase tracking-wide">Vehicle Details</h2>
         <Input
+          label="Vehicle Name"
+          value={carName}
+          onChange={e => setCarName(e.target.value)}
+          placeholder="e.g. Toyota Camry, BMW 3 Series..."
+        />
+        <Input
           label="Number of Cars"
           type="number"
           min="1"
-          value={numCars}
-          onChange={e => setNumCars(Math.max(1, +e.target.value))}
+          value={numCarsRaw}
+          onChange={e => setNumCarsRaw(e.target.value)}
+          onBlur={() => setNumCarsRaw(String(Math.max(1, parseInt(numCarsRaw) || 1)))}
           error={errors.numCars}
         />
         <VehicleTypeToggle
