@@ -57,9 +57,7 @@ export default function RatesForm({ initialRates, initialCompany, userId, hasExi
   }
 
   const rateFields: { key: keyof RateSettings; label: string }[] = [
-    { key: 'amg_surcharge',         label: 'Mercedes Surcharge ($)' },
-    { key: 'suv_surcharge',         label: 'SUV Surcharge ($)' },
-    { key: 'pickup_surcharge',      label: 'Pickup Truck Surcharge ($)' },
+    { key: 'amg_surcharge',         label: 'Special Vehicle Surcharge ($)' },
     { key: 'base_towing_fee',       label: 'Base Towing Fee ($)' },
     { key: 'time_cutting_rate',     label: 'Time Cutting Rate per Car ($)' },
     { key: 'container_load_price',  label: 'Container Load Transport Price ($)' },
@@ -100,7 +98,6 @@ export default function RatesForm({ initialRates, initialCompany, userId, hasExi
           <Input label="Phone Number"    type="tel" value={company.company_phone}   onChange={e => setCompanyField('company_phone', e.target.value)}   placeholder="+27 ..." />
           <Input label="Email Address"   type="email" value={company.company_email}   onChange={e => setCompanyField('company_email', e.target.value)}   placeholder="info@example.com" />
           <Input label="Address"         value={company.company_address} onChange={e => setCompanyField('company_address', e.target.value)} placeholder="Street, City, Province" />
-          <Input label="VAT Number"      value={company.vat_number ?? ''} onChange={e => setCompanyField('vat_number', e.target.value)}     placeholder="Optional" />
         </Card>
         <div className="mt-4">
           <Button variant="primary" size="lg" fullWidth loading={savingCo} onClick={handleSaveCompany}>

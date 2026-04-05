@@ -1,39 +1,44 @@
 'use client';
-import type { VehicleType } from '@/types/quote';
+import Input from '@/components/ui/Input';
 
 interface Props {
-  value: VehicleType | '';
-  onChange: (type: VehicleType) => void;
-  label?: string;
+  isSpecial:    boolean;
+  vehicleName:  string;
+  surcharge:    number;
+  onToggle:     (v: boolean) => void;
+  onNameChange: (name: string) => void;
+  error?:       string;
 }
 
-const OPTIONS: { type: VehicleType; label: string }[] = [
-  { type: 'amg',    label: 'Mercedes' },
-  { type: 'suv',    label: 'SUV' },
-  { type: 'pickup', label: 'Pickup Truck' },
-];
-
-export default function VehicleTypeToggle({ value, onChange, label = 'Vehicle Type' }: Props) {
+export default function VehicleTypeToggle({ isSpecial, vehicleName, surcharge, onToggle, onNameChange, error }: Props) {
   return (
-    <div className="flex flex-col gap-2">
-      <span className="text-sm font-semibold text-navy uppercase tracking-wide">{label}</span>
-      <div className="grid grid-cols-3 gap-2">
-        {OPTIONS.map(({ type, label: optLabel }) => (
-          <button
-            key={type}
-            type="button"
-            onClick={() => onChange(type)}
-            className={[
-              'py-3 rounded-xl font-semibold text-sm border-2 transition-colors min-h-[48px]',
-              value === type
-                ? 'bg-navy border-navy text-white'
-                : 'bg-white border-gray-300 text-navy hover:border-navy',
-            ].join(' ')}
-          >
-            {optLabel}
-          </button>
-        ))}
-      </div>
+    <div className="flex flex-col gap-3">
+      <span className="text-sm font-semibold text-navy uppercase tracking-wide">Special Vehicle</span>
+      <button
+        type="button"
+        onClick={() => onToggle(!isSpecial)}
+        className={[
+          'w-full py-3 rounded-xl font-semibold text-sm border-2 transition-colors min-h-[48px] flex items-center justify-between px-4',
+          isSpecial
+            ? 'bg-navy border-navy text-white'
+            : 'bg-white border-gray-300 text-navy hover:border-navy',
+        ].join(' ')}
+      >
+        <span>Special Vehicle (extra charge)</span>
+        <span className={isSpecial ? 'text-amber font-bold' : 'text-muted text-xs'}>
+          {isSpecial ? `+ $${surcharge.toLocaleString()}` : 'Tap to enable'}
+        </span>
+      </button>
+
+      {isSpecial && (
+        <Input
+          label="Vehicle Name"
+          value={vehicleName}
+          onChange={e => onNameChange(e.target.value)}
+          placeholder="e.g. Ferrari, Lamborghini, Rolls Royce..."
+          error={error}
+        />
+      )}
     </div>
   );
 }

@@ -19,7 +19,6 @@ export interface CompanySettings {
   company_email:    string;
   company_address:  string;
   logo_path?:       string;
-  vat_number?:      string;
 }
 
 export const DEFAULT_RATES: RateSettings = {

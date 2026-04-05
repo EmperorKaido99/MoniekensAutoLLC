@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { RateSettings, CompanySettings } from '@/types/settings';
-import type { VehicleType, LineItem } from '@/types/quote';
+import type { LineItem } from '@/types/quote';
 import { buildQuoteNumber } from '@/lib/utils/generateQuoteNumber';
 import { generateQuotePDF } from '@/lib/pdf/generateQuotePDF';
 import { generateQRDataUrl } from '@/lib/qr';
@@ -23,39 +23,36 @@ interface Props {
 export default function ExportQuoteForm({ rates, company, userId }: Props) {
   const router = useRouter();
 
-  // Customer fields
   const [customerName,  setCustomerName]  = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
 
-  // Export-specific fields
-  const [numCars,       setNumCars]       = useState(1);
-  const [vehicleType,   setVehicleType]   = useState<VehicleType | ''>('');
-  const [loadPrice,     setLoadPrice]     = useState(rates.container_load_price);
-  const [lotPayment,    setLotPayment]    = useState(rates.container_lot_payment);
-  const [landFee,       setLandFee]       = useState(rates.container_land_fee);
-  const [extraItems,    setExtraItems]    = useState<ExtraItem[]>([]);
-  const [notes,         setNotes]         = useState('');
+  const [numCars,          setNumCars]          = useState(1);
+  const [isSpecialVehicle, setIsSpecialVehicle] = useState(false);
+  const [vehicleName,      setVehicleName]      = useState('');
+  const [loadPrice,        setLoadPrice]        = useState(rates.container_load_price);
+  const [lotPayment,       setLotPayment]       = useState(rates.container_lot_payment);
+  const [landFee,          setLandFee]          = useState(rates.container_land_fee);
+  const [extraItems,       setExtraItems]       = useState<ExtraItem[]>([]);
+  const [notes,            setNotes]            = useState('');
 
   const [errors,        setErrors]        = useState<Record<string, string>>({});
   const [savingDraft,   setSavingDraft]   = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [toast,         setToast]         = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // ── Derived totals ────────────────────────────────────────────────────────
+  const specialSurcharge  = rates.amg_surcharge;
   const timeCuttingTotal  = rates.time_cutting_rate * numCars;
-  const vehicleSurcharge  = vehicleType
-    ? rates[`${vehicleType}_surcharge` as keyof RateSettings] as number * numCars
-    : 0;
-  const extraTotal = extraItems.reduce((s, i) => s + i.quantity * i.unit_price, 0);
-  const total = timeCuttingTotal + loadPrice + lotPayment + landFee + vehicleSurcharge + extraTotal;
+  const vehicleSurcharge  = isSpecialVehicle ? specialSurcharge * numCars : 0;
+  const extraTotal        = extraItems.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+  const total             = timeCuttingTotal + loadPrice + lotPayment + landFee + vehicleSurcharge + extraTotal;
 
   function validate(): boolean {
     const e: Record<string, string> = {};
     if (!customerName.trim())  e.customerName  = 'Customer name is required';
     if (!customerPhone.trim()) e.customerPhone = 'Phone number is required';
     if (numCars < 1)           e.numCars       = 'Number of cars must be at least 1';
-    if (!vehicleType)          e.vehicleType   = 'Please select a vehicle type';
+    if (isSpecialVehicle && !vehicleName.trim()) e.vehicleName = 'Please enter the vehicle name';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -63,13 +60,12 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
   function buildLineItems(): LineItem[] {
     const items: LineItem[] = [
       { label: `Time Cutting (${numCars} car${numCars > 1 ? 's' : ''})`, quantity: numCars, unit_price: rates.time_cutting_rate, total: timeCuttingTotal },
-      { label: 'Container Load Transport',  quantity: 1, unit_price: loadPrice,  total: loadPrice },
-      { label: 'Container Lot Payment',     quantity: 1, unit_price: lotPayment, total: lotPayment },
-      { label: 'Container Land Fee',        quantity: 1, unit_price: landFee,    total: landFee },
+      { label: 'Container Load Transport', quantity: 1, unit_price: loadPrice,  total: loadPrice },
+      { label: 'Container Lot Payment',    quantity: 1, unit_price: lotPayment, total: lotPayment },
+      { label: 'Container Land Fee',       quantity: 1, unit_price: landFee,    total: landFee },
     ];
-    if (vehicleType) {
-      const label = vehicleType === 'amg' ? 'Mercedes' : vehicleType === 'suv' ? 'SUV' : 'Pickup Truck';
-      items.push({ label: `${label} Surcharge (${numCars} car${numCars > 1 ? 's' : ''})`, quantity: numCars, unit_price: rates[`${vehicleType}_surcharge` as keyof RateSettings] as number, total: vehicleSurcharge });
+    if (isSpecialVehicle) {
+      items.push({ label: `Special Vehicle Surcharge — ${vehicleName} (${numCars} car${numCars > 1 ? 's' : ''})`, quantity: numCars, unit_price: specialSurcharge, total: vehicleSurcharge });
     }
     extraItems.forEach(ei => {
       items.push({ label: ei.label || 'Additional item', quantity: ei.quantity, unit_price: ei.unit_price, total: ei.quantity * ei.unit_price });
@@ -137,10 +133,12 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
       const supabase = createClient();
       await supabase.from('quotes').update({ qr_code_data: qrPayload }).eq('id', saved.id);
 
+      const logoDataUrl = await fetchLogoDataUrl();
       const pdfBlob = generateQuotePDF(
         { ...saved, created_at: saved.created_at },
         company,
         qrDataUrl,
+        logoDataUrl,
       );
 
       const base64 = await blobToBase64(pdfBlob);
@@ -171,15 +169,13 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
 
   return (
     <div className="px-4 py-5 space-y-5 pb-44">
-      {/* Customer info */}
       <section className="space-y-4">
         <h2 className="text-base font-semibold text-navy uppercase tracking-wide">Customer</h2>
-        <Input label="Customer Name"  value={customerName}  onChange={e => setCustomerName(e.target.value)}  error={errors.customerName}  placeholder="Full name" />
-        <Input label="Phone Number"   type="tel" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} error={errors.customerPhone} placeholder="+27 ..." />
+        <Input label="Customer Name"    value={customerName}  onChange={e => setCustomerName(e.target.value)}  error={errors.customerName}  placeholder="Full name" />
+        <Input label="Phone Number"     type="tel" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} error={errors.customerPhone} placeholder="+27 ..." />
         <Input label="Email (Optional)" type="email" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="email@example.com" />
       </section>
 
-      {/* Vehicle & cars */}
       <section className="space-y-4">
         <h2 className="text-base font-semibold text-navy uppercase tracking-wide">Vehicle Details</h2>
         <Input
@@ -190,39 +186,39 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
           onChange={e => setNumCars(Math.max(1, +e.target.value))}
           error={errors.numCars}
         />
-        <VehicleTypeToggle value={vehicleType} onChange={setVehicleType} />
-        {errors.vehicleType && <p className="text-sm text-danger font-medium">{errors.vehicleType}</p>}
+        <VehicleTypeToggle
+          isSpecial={isSpecialVehicle}
+          vehicleName={vehicleName}
+          surcharge={specialSurcharge}
+          onToggle={setIsSpecialVehicle}
+          onNameChange={setVehicleName}
+          error={errors.vehicleName}
+        />
       </section>
 
-      {/* Pricing */}
       <section className="space-y-4">
         <h2 className="text-base font-semibold text-navy uppercase tracking-wide">Pricing</h2>
-
-        {/* Read-only calculated fields */}
         <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
           <div className="flex justify-between text-base">
             <span className="text-muted">Time Cutting ({numCars} car{numCars > 1 ? 's' : ''})</span>
             <span className="font-semibold text-navy">$ {timeCuttingTotal.toLocaleString()}</span>
           </div>
-          {vehicleType && (
+          {isSpecialVehicle && (
             <div className="flex justify-between text-base">
-              <span className="text-muted">Vehicle Surcharge</span>
+              <span className="text-muted">Special Vehicle Surcharge</span>
               <span className="font-semibold text-navy">$ {vehicleSurcharge.toLocaleString()}</span>
             </div>
           )}
         </div>
-
         <Input label="Container Load Transport ($)" type="number" min="0" value={loadPrice}  onChange={e => setLoadPrice(+e.target.value)}  />
         <Input label="Container Lot Payment ($)"    type="number" min="0" value={lotPayment} onChange={e => setLotPayment(+e.target.value)} />
         <Input label="Container Land Fee ($)"       type="number" min="0" value={landFee}    onChange={e => setLandFee(+e.target.value)}    />
       </section>
 
-      {/* Additional items */}
       <section>
         <LineItemsEditor items={extraItems} onChange={setExtraItems} />
       </section>
 
-      {/* Notes */}
       <section>
         <Textarea label="Notes (Optional)" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any additional notes for the customer..." />
       </section>
@@ -240,6 +236,22 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
       )}
     </div>
   );
+}
+
+async function fetchLogoDataUrl(): Promise<string | undefined> {
+  try {
+    const res = await fetch('/images/Logo.png');
+    if (!res.ok) return undefined;
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload  = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(undefined);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return undefined;
+  }
 }
 
 async function blobToBase64(blob: Blob): Promise<string> {

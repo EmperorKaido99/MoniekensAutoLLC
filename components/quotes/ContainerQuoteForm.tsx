@@ -99,7 +99,8 @@ export default function ContainerQuoteForm({ rates, company, userId }: Props) {
       const qrDataUrl = await generateQRDataUrl(qrPayload);
       const supabase  = createClient();
       await supabase.from('quotes').update({ qr_code_data: qrPayload }).eq('id', saved.id);
-      const pdfBlob = generateQuotePDF({ ...saved, created_at: saved.created_at }, company, qrDataUrl);
+      const logoDataUrl = await fetchLogoDataUrl();
+      const pdfBlob = generateQuotePDF({ ...saved, created_at: saved.created_at }, company, qrDataUrl, logoDataUrl);
       const base64  = await blobToBase64(pdfBlob);
       const pdfRes  = await fetch('/api/generate-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quote_id: saved.id, pdf_base64: base64 }) });
       if (!pdfRes.ok) throw new Error('PDF generation failed');
@@ -149,6 +150,22 @@ export default function ContainerQuoteForm({ rates, company, userId }: Props) {
       )}
     </div>
   );
+}
+
+async function fetchLogoDataUrl(): Promise<string | undefined> {
+  try {
+    const res = await fetch('/images/Logo.png');
+    if (!res.ok) return undefined;
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload  = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(undefined);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return undefined;
+  }
 }
 
 async function blobToBase64(blob: Blob): Promise<string> {

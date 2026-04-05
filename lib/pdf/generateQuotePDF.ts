@@ -29,7 +29,7 @@ export interface QuotePDFInput {
   created_at:     string;
 }
 
-export function generateQuotePDF(quote: QuotePDFInput, company: CompanySettings, qrDataUrl?: string): Blob {
+export function generateQuotePDF(quote: QuotePDFInput, company: CompanySettings, qrDataUrl?: string, logoDataUrl?: string): Blob {
   const doc  = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const PW   = 210;
   const PH   = 297;
@@ -40,16 +40,23 @@ export function generateQuotePDF(quote: QuotePDFInput, company: CompanySettings,
   doc.setFillColor(...NAVY);
   doc.rect(0, 0, PW, 44, 'F');
 
+  // Logo (if available)
+  const logoSize = 22;
+  const textX    = logoDataUrl ? M + logoSize + 4 : M;
+  if (logoDataUrl) {
+    doc.addImage(logoDataUrl, 'PNG', M, 5, logoSize, logoSize);
+  }
+
   // Company name
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(17);
   doc.setTextColor(...WHITE);
-  doc.text(company.company_name || "MoniekensAutoLLC", M, 16);
+  doc.text(company.company_name || 'MoniekensAutoLLC', textX, 16);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(180, 210, 235);
-  doc.text(TYPE_LABELS[quote.quote_type], M, 23);
+  doc.text(TYPE_LABELS[quote.quote_type], textX, 23);
 
   // QUOTATION — right aligned
   doc.setFont('helvetica', 'bold');
@@ -162,7 +169,6 @@ export function generateQuotePDF(quote: QuotePDFInput, company: CompanySettings,
     company.company_phone,
     company.company_email,
     company.company_address,
-    company.vat_number ? `VAT: ${company.vat_number}` : '',
   ].filter(Boolean);
 
   doc.text(footerParts.join('  ·  '), PW / 2, PH - 10, { align: 'center' });

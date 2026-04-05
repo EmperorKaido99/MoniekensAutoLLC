@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { RateSettings, CompanySettings } from '@/types/settings';
-import type { VehicleType, LineItem } from '@/types/quote';
+import type { LineItem } from '@/types/quote';
 import { buildQuoteNumber } from '@/lib/utils/generateQuoteNumber';
 import { generateQuotePDF } from '@/lib/pdf/generateQuotePDF';
 import { generateQRDataUrl } from '@/lib/qr';
@@ -24,8 +24,9 @@ export default function TowingQuoteForm({ rates, company, userId }: Props) {
   const [vehicleMake,   setVehicleMake]   = useState('');
   const [vehicleModel,  setVehicleModel]  = useState('');
   const [vehicleYear,   setVehicleYear]   = useState('');
-  const [vehicleType,   setVehicleType]   = useState<VehicleType | ''>('');
-  const [pickupLoc,     setPickupLoc]     = useState('');
+  const [isSpecialVehicle, setIsSpecialVehicle] = useState(false);
+  const [vehicleName,      setVehicleName]      = useState('');
+  const [pickupLoc,        setPickupLoc]        = useState('');
   const [dropoffLoc,    setDropoffLoc]    = useState('');
   const [extraItems,    setExtraItems]    = useState<ExtraItem[]>([]);
   const [notes,         setNotes]         = useState('');
@@ -34,16 +35,16 @@ export default function TowingQuoteForm({ rates, company, userId }: Props) {
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [toast,         setToast]         = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const baseFee       = rates.base_towing_fee;
-  const surcharge     = vehicleType ? rates[`${vehicleType}_surcharge` as keyof RateSettings] as number : 0;
-  const extraTotal    = extraItems.reduce((s, i) => s + i.quantity * i.unit_price, 0);
-  const total         = baseFee + surcharge + extraTotal;
+  const baseFee    = rates.base_towing_fee;
+  const surcharge  = isSpecialVehicle ? rates.amg_surcharge : 0;
+  const extraTotal = extraItems.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+  const total      = baseFee + surcharge + extraTotal;
 
   function validate() {
     const e: Record<string, string> = {};
     if (!customerName.trim())  e.customerName  = 'Customer name is required';
     if (!customerPhone.trim()) e.customerPhone = 'Phone number is required';
-    if (!vehicleType)          e.vehicleType   = 'Please select a vehicle type';
+    if (isSpecialVehicle && !vehicleName.trim()) e.vehicleName = 'Please enter the vehicle name';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -52,9 +53,8 @@ export default function TowingQuoteForm({ rates, company, userId }: Props) {
     const items: LineItem[] = [
       { label: 'Base Towing Fee', quantity: 1, unit_price: baseFee, total: baseFee },
     ];
-    if (vehicleType) {
-      const label = vehicleType === 'amg' ? 'Mercedes' : vehicleType === 'suv' ? 'SUV' : 'Pickup Truck';
-      items.push({ label: `${label} Surcharge`, quantity: 1, unit_price: surcharge, total: surcharge });
+    if (isSpecialVehicle) {
+      items.push({ label: `Special Vehicle Surcharge — ${vehicleName}`, quantity: 1, unit_price: surcharge, total: surcharge });
     }
     extraItems.forEach(ei => items.push({ label: ei.label || 'Additional item', quantity: ei.quantity, unit_price: ei.unit_price, total: ei.quantity * ei.unit_price }));
     return items;
@@ -110,7 +110,8 @@ export default function TowingQuoteForm({ rates, company, userId }: Props) {
       const qrDataUrl = await generateQRDataUrl(qrPayload);
       const supabase  = createClient();
       await supabase.from('quotes').update({ qr_code_data: qrPayload }).eq('id', saved.id);
-      const pdfBlob = generateQuotePDF({ ...saved, created_at: saved.created_at }, company, qrDataUrl);
+      const logoDataUrl = await fetchLogoDataUrl();
+      const pdfBlob = generateQuotePDF({ ...saved, created_at: saved.created_at }, company, qrDataUrl, logoDataUrl);
       const base64  = await blobToBase64(pdfBlob);
       const pdfRes  = await fetch('/api/generate-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quote_id: saved.id, pdf_base64: base64 }) });
       if (!pdfRes.ok) throw new Error('PDF generation failed');
@@ -142,8 +143,14 @@ export default function TowingQuoteForm({ rates, company, userId }: Props) {
           <Input label="Model" value={vehicleModel} onChange={e => setVehicleModel(e.target.value)} placeholder="e.g. Hilux" />
         </div>
         <Input label="Year" type="number" value={vehicleYear} onChange={e => setVehicleYear(e.target.value)} placeholder="e.g. 2022" />
-        <VehicleTypeToggle value={vehicleType} onChange={setVehicleType} />
-        {errors.vehicleType && <p className="text-sm text-danger font-medium">{errors.vehicleType}</p>}
+        <VehicleTypeToggle
+          isSpecial={isSpecialVehicle}
+          vehicleName={vehicleName}
+          surcharge={rates.amg_surcharge}
+          onToggle={setIsSpecialVehicle}
+          onNameChange={setVehicleName}
+          error={errors.vehicleName}
+        />
       </section>
 
       <section className="space-y-4">
@@ -160,9 +167,9 @@ export default function TowingQuoteForm({ rates, company, userId }: Props) {
             <span className="text-muted">Base Towing Fee</span>
             <span className="font-semibold text-navy">$ {baseFee.toLocaleString()}</span>
           </div>
-          {vehicleType && (
+          {isSpecialVehicle && (
             <div className="flex justify-between text-base">
-              <span className="text-muted">Vehicle Surcharge</span>
+              <span className="text-muted">Special Vehicle Surcharge</span>
               <span className="font-semibold text-navy">$ {surcharge.toLocaleString()}</span>
             </div>
           )}
@@ -179,6 +186,22 @@ export default function TowingQuoteForm({ rates, company, userId }: Props) {
       )}
     </div>
   );
+}
+
+async function fetchLogoDataUrl(): Promise<string | undefined> {
+  try {
+    const res = await fetch('/images/Logo.png');
+    if (!res.ok) return undefined;
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload  = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(undefined);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return undefined;
+  }
 }
 
 async function blobToBase64(blob: Blob): Promise<string> {
