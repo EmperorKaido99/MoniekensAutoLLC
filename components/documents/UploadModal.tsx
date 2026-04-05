@@ -78,8 +78,9 @@ export default function UploadModal({ open, onClose, userId }: Props) {
     setFileError('');
 
     try {
-      // Convert image to PDF using jsPDF
       const { jsPDF } = await import('jspdf');
+
+      // 1. Read the file into an image element
       const imgDataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload  = () => resolve(reader.result as string);
@@ -87,7 +88,6 @@ export default function UploadModal({ open, onClose, userId }: Props) {
         reader.readAsDataURL(image);
       });
 
-      // Get image dimensions to determine orientation
       const img = await new Promise<HTMLImageElement>((resolve, reject) => {
         const el = new Image();
         el.onload  = () => resolve(el);
@@ -95,23 +95,28 @@ export default function UploadModal({ open, onClose, userId }: Props) {
         el.src = imgDataUrl;
       });
 
+      // 2. Resize to A4 at 150dpi on a canvas — this prevents jsPDF corruption
       const isLandscape = img.width > img.height;
+      const TARGET_W = isLandscape ? 1754 : 1240;
+      const TARGET_H = isLandscape ? 1240 : 1754;
+
+      const scale  = Math.min(TARGET_W / img.width, TARGET_H / img.height);
+      const canvasW = Math.round(img.width  * scale);
+      const canvasH = Math.round(img.height * scale);
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = canvasW;
+      canvas.height = canvasH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas not supported');
+      ctx.drawImage(img, 0, 0, canvasW, canvasH);
+      const resized = canvas.toDataURL('image/jpeg', 0.88);
+
+      // 3. Create A4 PDF from the resized image
       const doc = new jsPDF({ orientation: isLandscape ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
       const pageW = doc.internal.pageSize.getWidth();
       const pageH = doc.internal.pageSize.getHeight();
-      // Scale image to fill the page while keeping aspect ratio
-      const imgRatio  = img.width / img.height;
-      const pageRatio = pageW / pageH;
-      let drawW = pageW;
-      let drawH = pageH;
-      if (imgRatio > pageRatio) {
-        drawH = pageW / imgRatio;
-      } else {
-        drawW = pageH * imgRatio;
-      }
-      const offsetX = (pageW - drawW) / 2;
-      const offsetY = (pageH - drawH) / 2;
-      doc.addImage(imgDataUrl, 'JPEG', offsetX, offsetY, drawW, drawH);
+      doc.addImage(resized, 'JPEG', 0, 0, pageW, pageH);
       const pdfBlob = doc.output('blob');
 
       const pdfFile = new File([pdfBlob], image.name.replace(/\.[^.]+$/, '') + '.pdf', { type: 'application/pdf' });
