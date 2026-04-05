@@ -6,9 +6,8 @@ import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
-import { formatCurrency } from '@/lib/utils/formatCurrency';
 import type { DocumentType } from '@/types/document';
-import { Upload, FileText, Camera } from 'lucide-react';
+import { Upload, FileText, Camera, AlertCircle } from 'lucide-react';
 
 interface Props {
   open:    boolean;
@@ -44,8 +43,9 @@ export default function UploadModal({ open, onClose, userId }: Props) {
   const [carPrice,     setCarPrice]     = useState('');
   const [notes,        setNotes]        = useState('');
 
-  const [errors,  setErrors]  = useState<Record<string, string>>({});
-  const [saving,  setSaving]  = useState(false);
+  const [errors,    setErrors]    = useState<Record<string, string>>({});
+  const [saving,    setSaving]    = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   function reset() {
     setStep('choose');
@@ -55,6 +55,7 @@ export default function UploadModal({ open, onClose, userId }: Props) {
     setCarMake(''); setCarModel(''); setCarYear(''); setCarPrice(''); setNotes('');
     setErrors({});
     setSaving(false);
+    setSaveError('');
   }
 
   function handleClose() { reset(); onClose(); }
@@ -119,6 +120,7 @@ export default function UploadModal({ open, onClose, userId }: Props) {
   async function handleSave() {
     if (!validate() || !file) return;
     setSaving(true);
+    setSaveError('');
 
     try {
       const supabase = createClient();
@@ -154,6 +156,8 @@ export default function UploadModal({ open, onClose, userId }: Props) {
       handleClose();
     } catch (err) {
       console.error(err);
+      const msg = err instanceof Error ? err.message : String(err);
+      setSaveError(`Upload failed: ${msg}`);
     } finally {
       setSaving(false);
     }
@@ -259,6 +263,13 @@ export default function UploadModal({ open, onClose, userId }: Props) {
             onChange={e => setNotes(e.target.value)}
             placeholder="Any additional notes..."
           />
+
+          {saveError && (
+            <div className="flex items-start gap-2 bg-danger/10 border border-danger/30 rounded-xl px-4 py-3">
+              <AlertCircle size={18} className="text-danger shrink-0 mt-0.5" />
+              <p className="text-danger text-sm font-medium">{saveError}</p>
+            </div>
+          )}
 
           <div className="flex flex-col gap-2 pt-2">
             <Button variant="primary" size="lg" fullWidth loading={saving} onClick={handleSave}>

@@ -36,7 +36,7 @@ export default function LoginPage() {
       <div className="flex flex-col items-center gap-4 mb-10">
         <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg bg-white">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo.png" alt="MoniekensAutoLLC" className="w-full h-full object-contain" />
+          <img src="/images/Logo.png" alt="MoniekensAutoLLC" className="w-full h-full object-cover" />
         </div>
         <div className="text-center">
           <h1 className="text-white text-2xl font-bold">MoniekensAutoLLC</h1>
