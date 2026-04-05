@@ -156,7 +156,11 @@ export default function UploadModal({ open, onClose, userId }: Props) {
       handleClose();
     } catch (err) {
       console.error(err);
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = err instanceof Error
+        ? err.message
+        : typeof err === 'object' && err !== null && 'message' in err
+          ? String((err as { message: unknown }).message)
+          : JSON.stringify(err);
       setSaveError(`Upload failed: ${msg}`);
     } finally {
       setSaving(false);
