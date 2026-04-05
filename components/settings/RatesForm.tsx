@@ -57,14 +57,14 @@ export default function RatesForm({ initialRates, initialCompany, userId, hasExi
   }
 
   const rateFields: { key: keyof RateSettings; label: string }[] = [
-    { key: 'amg_surcharge',         label: 'AMG Surcharge (R)' },
-    { key: 'suv_surcharge',         label: 'SUV Surcharge (R)' },
-    { key: 'pickup_surcharge',      label: 'Pickup Truck Surcharge (R)' },
-    { key: 'base_towing_fee',       label: 'Base Towing Fee (R)' },
-    { key: 'time_cutting_rate',     label: 'Time Cutting Rate per Car (R)' },
-    { key: 'container_load_price',  label: 'Container Load Transport Price (R)' },
-    { key: 'container_lot_payment', label: 'Container Lot Payment (R)' },
-    { key: 'container_land_fee',    label: 'Container Land Fee (R)' },
+    { key: 'amg_surcharge',         label: 'Mercedes Surcharge ($)' },
+    { key: 'suv_surcharge',         label: 'SUV Surcharge ($)' },
+    { key: 'pickup_surcharge',      label: 'Pickup Truck Surcharge ($)' },
+    { key: 'base_towing_fee',       label: 'Base Towing Fee ($)' },
+    { key: 'time_cutting_rate',     label: 'Time Cutting Rate per Car ($)' },
+    { key: 'container_load_price',  label: 'Container Load Transport Price ($)' },
+    { key: 'container_lot_payment', label: 'Container Lot Payment ($)' },
+    { key: 'container_land_fee',    label: 'Container Land Fee ($)' },
   ];
 
   return (
@@ -96,7 +96,7 @@ export default function RatesForm({ initialRates, initialCompany, userId, hasExi
       <section>
         <h2 className="text-base font-semibold text-navy uppercase tracking-wide mb-4">Company Settings</h2>
         <Card className="space-y-4">
-          <Input label="Company Name"    value={company.company_name}    onChange={e => setCompanyField('company_name', e.target.value)}    placeholder="Dad's Auto Group" />
+          <Input label="Company Name"    value={company.company_name}    onChange={e => setCompanyField('company_name', e.target.value)}    placeholder="MoniekensAutoLLC" />
           <Input label="Phone Number"    type="tel" value={company.company_phone}   onChange={e => setCompanyField('company_phone', e.target.value)}   placeholder="+27 ..." />
           <Input label="Email Address"   type="email" value={company.company_email}   onChange={e => setCompanyField('company_email', e.target.value)}   placeholder="info@example.com" />
           <Input label="Address"         value={company.company_address} onChange={e => setCompanyField('company_address', e.target.value)} placeholder="Street, City, Province" />

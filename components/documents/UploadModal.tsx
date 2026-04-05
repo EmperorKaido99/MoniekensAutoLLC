@@ -6,9 +6,9 @@ import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
-import { formatZAR } from '@/lib/utils/formatCurrency';
+import { formatCurrency } from '@/lib/utils/formatCurrency';
 import type { DocumentType } from '@/types/document';
-import { Upload, FileText } from 'lucide-react';
+import { Upload, FileText, Camera } from 'lucide-react';
 
 interface Props {
   open:    boolean;
@@ -19,6 +19,7 @@ interface Props {
 type Step = 'choose' | 'metadata';
 
 const DOC_TYPES: { value: DocumentType; label: string }[] = [
+  { value: 'car_title',    label: 'Car Title' },
   { value: 'deed_of_sale', label: 'Deed of Sale' },
   { value: 'invoice',      label: 'Invoice' },
   { value: 'quote',        label: 'Quote' },
@@ -26,8 +27,9 @@ const DOC_TYPES: { value: DocumentType; label: string }[] = [
 ];
 
 export default function UploadModal({ open, onClose, userId }: Props) {
-  const router   = useRouter();
-  const fileRef  = useRef<HTMLInputElement>(null);
+  const router     = useRouter();
+  const fileRef    = useRef<HTMLInputElement>(null);
+  const cameraRef  = useRef<HTMLInputElement>(null);
 
   const [step,         setStep]         = useState<Step>('choose');
   const [file,         setFile]         = useState<File | null>(null);
@@ -67,6 +69,44 @@ export default function UploadModal({ open, onClose, userId }: Props) {
     setFileError('');
     setFile(selected);
     setStep('metadata');
+  }
+
+  async function handleCameraCapture(e: React.ChangeEvent<HTMLInputElement>) {
+    const image = e.target.files?.[0];
+    if (!image) return;
+    setFileError('');
+
+    try {
+      // Convert image to PDF using jsPDF
+      const { jsPDF } = await import('jspdf');
+      const imgDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(image);
+      });
+
+      // Create PDF sized to the image
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = new Image();
+        el.onload  = () => resolve(el);
+        el.onerror = reject;
+        el.src = imgDataUrl;
+      });
+
+      const isLandscape = img.width > img.height;
+      const doc = new jsPDF({ orientation: isLandscape ? 'landscape' : 'portrait', unit: 'px', format: [img.width, img.height] });
+      doc.addImage(imgDataUrl, 'JPEG', 0, 0, img.width, img.height);
+      const pdfBlob = doc.output('blob');
+
+      const pdfFile = new File([pdfBlob], image.name.replace(/\.[^.]+$/, '') + '.pdf', { type: 'application/pdf' });
+      setFile(pdfFile);
+      setDocType('car_title');
+      setStep('metadata');
+    } catch (err) {
+      console.error(err);
+      setFileError('Failed to process image. Please try again.');
+    }
   }
 
   function validate() {
@@ -139,31 +179,17 @@ export default function UploadModal({ open, onClose, userId }: Props) {
 
           {fileError && <p className="text-danger text-sm font-medium">{fileError}</p>}
 
-          {/* Camera capture — Phase 7 */}
+          {/* Camera capture */}
           <button
-            disabled
-            className="flex items-center gap-4 bg-gray-50 rounded-2xl p-4 min-h-[64px] text-left opacity-50 cursor-not-allowed w-full"
+            onClick={() => cameraRef.current?.click()}
+            className="flex items-center gap-4 bg-gray-50 rounded-2xl p-4 min-h-[64px] text-left hover:bg-gray-100 active:bg-gray-200 transition-colors w-full"
           >
-            <div className="w-11 h-11 rounded-xl bg-muted flex items-center justify-center shrink-0">
-              <FileText size={20} className="text-white" />
+            <div className="w-11 h-11 rounded-xl bg-amber flex items-center justify-center shrink-0">
+              <Camera size={20} className="text-white" />
             </div>
             <div>
               <p className="font-semibold text-navy text-base">Capture with camera</p>
-              <p className="text-muted text-sm">Coming soon</p>
-            </div>
-          </button>
-
-          {/* Manual deed — Phase 7 */}
-          <button
-            disabled
-            className="flex items-center gap-4 bg-gray-50 rounded-2xl p-4 min-h-[64px] text-left opacity-50 cursor-not-allowed w-full"
-          >
-            <div className="w-11 h-11 rounded-xl bg-muted flex items-center justify-center shrink-0">
-              <FileText size={20} className="text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-navy text-base">Manual deed of sale entry</p>
-              <p className="text-muted text-sm">Coming soon</p>
+              <p className="text-muted text-sm">Photograph a car title or document</p>
             </div>
           </button>
 
@@ -173,6 +199,14 @@ export default function UploadModal({ open, onClose, userId }: Props) {
             accept="application/pdf"
             className="sr-only"
             onChange={handleFileSelect}
+          />
+          <input
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="sr-only"
+            onChange={handleCameraCapture}
           />
         </div>
       )}
@@ -216,7 +250,7 @@ export default function UploadModal({ open, onClose, userId }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <Input label="Year"         type="number" value={carYear}  onChange={e => setCarYear(e.target.value)}  placeholder="e.g. 2022" />
-            <Input label="Car Price (R)" type="number" value={carPrice} onChange={e => setCarPrice(e.target.value)} placeholder="0.00" />
+            <Input label="Car Price ($)" type="number" value={carPrice} onChange={e => setCarPrice(e.target.value)} placeholder="0.00" />
           </div>
 
           <Textarea

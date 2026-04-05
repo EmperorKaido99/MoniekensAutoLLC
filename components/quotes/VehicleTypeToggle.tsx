@@ -8,7 +8,7 @@ interface Props {
 }
 
 const OPTIONS: { type: VehicleType; label: string }[] = [
-  { type: 'amg',    label: 'AMG' },
+  { type: 'amg',    label: 'Mercedes' },
   { type: 'suv',    label: 'SUV' },
   { type: 'pickup', label: 'Pickup Truck' },
 ];

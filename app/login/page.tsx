@@ -34,11 +34,12 @@ export default function LoginPage() {
     <div className="min-h-screen bg-navy flex flex-col items-center justify-center px-5">
       {/* Logo */}
       <div className="flex flex-col items-center gap-4 mb-10">
-        <div className="w-20 h-20 rounded-2xl bg-amber flex items-center justify-center shadow-lg">
-          <span className="text-white font-bold text-4xl">D</span>
+        <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg bg-white">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/logo.png" alt="MoniekensAutoLLC" className="w-full h-full object-contain" />
         </div>
         <div className="text-center">
-          <h1 className="text-white text-2xl font-bold">Dad's Auto Group</h1>
+          <h1 className="text-white text-2xl font-bold">MoniekensAutoLLC</h1>
           <p className="text-white/60 text-base mt-1">Business Management</p>
         </div>
       </div>

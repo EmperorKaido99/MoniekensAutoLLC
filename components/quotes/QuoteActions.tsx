@@ -6,13 +6,14 @@ import type { Quote, QuoteStatus } from '@/types/quote';
 import Button from '@/components/ui/Button';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import QRModal from '@/components/quotes/QRModal';
-import { FileDown, CheckCircle, Trash2, QrCode } from 'lucide-react';
+import { FileDown, Printer, CheckCircle, Trash2, QrCode } from 'lucide-react';
 
 interface Props { quote: Quote; userId: string; }
 
 export default function QuoteActions({ quote, userId }: Props) {
   const router  = useRouter();
   const [loadingPDF,    setLoadingPDF]    = useState(false);
+  const [loadingPrint,  setLoadingPrint]  = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting,      setDeleting]      = useState(false);
@@ -27,6 +28,19 @@ export default function QuoteActions({ quote, userId }: Props) {
       window.open(signedUrl, '_blank');
     } finally {
       setLoadingPDF(false);
+    }
+  }
+
+  async function handlePrint() {
+    if (!quote.pdf_url) return;
+    setLoadingPrint(true);
+    try {
+      const res = await fetch(`/api/documents/signed-url?path=${encodeURIComponent(quote.pdf_url)}`);
+      const { signedUrl } = await res.json();
+      // Open PDF in new tab — browser's built-in PDF viewer has a print button
+      window.open(signedUrl, '_blank');
+    } finally {
+      setLoadingPrint(false);
     }
   }
 
@@ -49,9 +63,14 @@ export default function QuoteActions({ quote, userId }: Props) {
     <>
       <div className="flex flex-col gap-3">
         {quote.pdf_url && (
-          <Button variant="secondary" size="lg" fullWidth loading={loadingPDF} onClick={handleDownloadPDF}>
-            <FileDown size={18} /> Download PDF
-          </Button>
+          <>
+            <Button variant="secondary" size="lg" fullWidth loading={loadingPDF} onClick={handleDownloadPDF}>
+              <FileDown size={18} /> Download PDF
+            </Button>
+            <Button variant="secondary" size="lg" fullWidth loading={loadingPrint} onClick={handlePrint}>
+              <Printer size={18} /> Print Invoice
+            </Button>
+          </>
         )}
         {quote.qr_code_data && (
           <Button variant="secondary" size="lg" fullWidth onClick={() => setShowQR(true)}>

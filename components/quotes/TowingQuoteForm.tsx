@@ -9,6 +9,7 @@ import { generateQuotePDF } from '@/lib/pdf/generateQuotePDF';
 import { generateQRDataUrl } from '@/lib/qr';
 import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
+import Toast from '@/components/ui/Toast';
 import VehicleTypeToggle from './VehicleTypeToggle';
 import LineItemsEditor, { type ExtraItem } from './LineItemsEditor';
 import RunningTotal from './RunningTotal';
@@ -31,6 +32,7 @@ export default function TowingQuoteForm({ rates, company, userId }: Props) {
   const [errors,        setErrors]        = useState<Record<string, string>>({});
   const [savingDraft,   setSavingDraft]   = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
+  const [toast,         setToast]         = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const baseFee       = rates.base_towing_fee;
   const surcharge     = vehicleType ? rates[`${vehicleType}_surcharge` as keyof RateSettings] as number : 0;
@@ -51,7 +53,7 @@ export default function TowingQuoteForm({ rates, company, userId }: Props) {
       { label: 'Base Towing Fee', quantity: 1, unit_price: baseFee, total: baseFee },
     ];
     if (vehicleType) {
-      const label = vehicleType === 'amg' ? 'AMG' : vehicleType === 'suv' ? 'SUV' : 'Pickup Truck';
+      const label = vehicleType === 'amg' ? 'Mercedes' : vehicleType === 'suv' ? 'SUV' : 'Pickup Truck';
       items.push({ label: `${label} Surcharge`, quantity: 1, unit_price: surcharge, total: surcharge });
     }
     extraItems.forEach(ei => items.push({ label: ei.label || 'Additional item', quantity: ei.quantity, unit_price: ei.unit_price, total: ei.quantity * ei.unit_price }));
@@ -87,9 +89,16 @@ export default function TowingQuoteForm({ rates, company, userId }: Props) {
   async function handleSaveDraft() {
     if (!validate()) return;
     setSavingDraft(true);
-    try { await saveQuote('draft'); router.push('/quotes'); }
-    catch (err) { console.error(err); }
-    finally { setSavingDraft(false); }
+    try {
+      await saveQuote('draft');
+      setToast({ message: 'Draft saved successfully', type: 'success' });
+      setTimeout(() => router.push('/quotes'), 1200);
+    } catch (err) {
+      console.error(err);
+      setToast({ message: 'Failed to save draft. Please try again.', type: 'error' });
+    } finally {
+      setSavingDraft(false);
+    }
   }
 
   async function handleGeneratePDF() {
@@ -103,14 +112,19 @@ export default function TowingQuoteForm({ rates, company, userId }: Props) {
       await supabase.from('quotes').update({ qr_code_data: qrPayload }).eq('id', saved.id);
       const pdfBlob = generateQuotePDF({ ...saved, created_at: saved.created_at }, company, qrDataUrl);
       const base64  = await blobToBase64(pdfBlob);
-      await fetch('/api/generate-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quote_id: saved.id, pdf_base64: base64 }) });
+      const pdfRes  = await fetch('/api/generate-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quote_id: saved.id, pdf_base64: base64 }) });
+      if (!pdfRes.ok) throw new Error('PDF generation failed');
       const urlRes = await fetch(`/api/documents/signed-url?path=quotes/${userId}/${saved.id}.pdf`);
       const { signedUrl } = await urlRes.json();
       if (typeof navigator !== 'undefined' && navigator.share) await navigator.share({ title: `Quote ${saved.quote_number}`, url: signedUrl });
       else window.open(signedUrl, '_blank');
       router.push('/quotes');
-    } catch (err) { console.error(err); }
-    finally { setGeneratingPDF(false); }
+    } catch (err) {
+      console.error(err);
+      setToast({ message: 'Failed to generate PDF. Please try again.', type: 'error' });
+    } finally {
+      setGeneratingPDF(false);
+    }
   }
 
   return (
@@ -144,12 +158,12 @@ export default function TowingQuoteForm({ rates, company, userId }: Props) {
         <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
           <div className="flex justify-between text-base">
             <span className="text-muted">Base Towing Fee</span>
-            <span className="font-semibold text-navy">R {baseFee.toLocaleString()}</span>
+            <span className="font-semibold text-navy">$ {baseFee.toLocaleString()}</span>
           </div>
           {vehicleType && (
             <div className="flex justify-between text-base">
               <span className="text-muted">Vehicle Surcharge</span>
-              <span className="font-semibold text-navy">R {surcharge.toLocaleString()}</span>
+              <span className="font-semibold text-navy">$ {surcharge.toLocaleString()}</span>
             </div>
           )}
         </div>
@@ -159,6 +173,10 @@ export default function TowingQuoteForm({ rates, company, userId }: Props) {
       <section><Textarea label="Notes (Optional)" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any additional notes..." /></section>
 
       <RunningTotal total={total} onSaveDraft={handleSaveDraft} onGeneratePDF={handleGeneratePDF} savingDraft={savingDraft} generatingPDF={generatingPDF} />
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
+      )}
     </div>
   );
 }

@@ -10,7 +10,12 @@
       "Bash(curl:*)",
       "Bash(node supabase/run-schema.mjs)",
       "Bash(npm run:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(node -e \"require\\(''eslint''\\)\")",
+      "Bash(node_modules/.bin/eslint app/ components/ --ext .ts,.tsx)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill /F /IM node.exe)"
     ]
   },
   "enabledPlugins": {

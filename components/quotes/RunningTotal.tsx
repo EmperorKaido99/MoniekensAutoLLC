@@ -1,5 +1,5 @@
 'use client';
-import { formatZAR } from '@/lib/utils/formatCurrency';
+import { formatCurrency } from '@/lib/utils/formatCurrency';
 import Button from '@/components/ui/Button';
 
 interface Props {
@@ -12,12 +12,12 @@ interface Props {
 
 export default function RunningTotal({ total, onSaveDraft, onGeneratePDF, savingDraft, generatingPDF }: Props) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 px-4 pt-3 pb-safe">
+    <div className="fixed bottom-16 left-0 right-0 z-30 bg-white border-t border-gray-200 px-4 pt-3 pb-3">
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm font-semibold text-muted uppercase tracking-wide">Grand Total</span>
-        <span className="text-2xl font-bold text-navy">{formatZAR(total)}</span>
+        <span className="text-2xl font-bold text-navy">{formatCurrency(total)}</span>
       </div>
-      <div className="grid grid-cols-2 gap-3 pb-4">
+      <div className="grid grid-cols-2 gap-3">
         <Button
           variant="secondary"
           size="lg"

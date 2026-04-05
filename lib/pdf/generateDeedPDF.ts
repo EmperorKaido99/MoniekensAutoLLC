@@ -47,7 +47,7 @@ export function generateDeedPDF(deed: DeedPDFInput, company: CompanySettings): B
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(180, 210, 235);
-  doc.text(company.company_name || "Dad's Auto Group", PW / 2, 27, { align: 'center' });
+  doc.text(company.company_name || "MoniekensAutoLLC", PW / 2, 27, { align: 'center' });
 
   let y = 46;
 

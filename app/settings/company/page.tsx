@@ -1,4 +1,6 @@
-// Company settings — manage business name, logo, address, and contact details
+import { redirect } from 'next/navigation';
+
+// Company settings are managed on the main settings page
 export default function CompanySettingsPage() {
-  return <main className="p-4">Company Settings</main>;
+  redirect('/settings');
 }

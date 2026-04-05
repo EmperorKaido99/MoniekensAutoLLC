@@ -1,13 +1,15 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, FileText, FolderOpen, ScanLine } from 'lucide-react';
+import { Home, FileText, FolderOpen, ScanLine, CalendarDays, Settings } from 'lucide-react';
 
 const tabs = [
   { label: 'Home',      href: '/dashboard', icon: Home },
   { label: 'Quotes',    href: '/quotes',    icon: FileText },
   { label: 'Documents', href: '/documents', icon: FolderOpen },
+  { label: 'Calendar',  href: '/calendar',  icon: CalendarDays },
   { label: 'Scan',      href: '/scan',      icon: ScanLine },
+  { label: 'Settings',  href: '/settings',  icon: Settings },
 ];
 
 export default function BottomNav() {

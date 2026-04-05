@@ -9,6 +9,7 @@ import { generateQuotePDF } from '@/lib/pdf/generateQuotePDF';
 import { generateQRDataUrl } from '@/lib/qr';
 import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
+import Toast from '@/components/ui/Toast';
 import LineItemsEditor, { type ExtraItem } from './LineItemsEditor';
 import RunningTotal from './RunningTotal';
 
@@ -31,6 +32,7 @@ export default function ContainerQuoteForm({ rates, company, userId }: Props) {
   const [errors,        setErrors]        = useState<Record<string, string>>({});
   const [savingDraft,   setSavingDraft]   = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
+  const [toast,         setToast]         = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const extraTotal = extraItems.reduce((s, i) => s + i.quantity * i.unit_price, 0);
   const total = loadPrice + landFee + lotPayment + extraTotal;
@@ -76,9 +78,16 @@ export default function ContainerQuoteForm({ rates, company, userId }: Props) {
   async function handleSaveDraft() {
     if (!validate()) return;
     setSavingDraft(true);
-    try { await saveQuote('draft'); router.push('/quotes'); }
-    catch (err) { console.error(err); }
-    finally { setSavingDraft(false); }
+    try {
+      await saveQuote('draft');
+      setToast({ message: 'Draft saved successfully', type: 'success' });
+      setTimeout(() => router.push('/quotes'), 1200);
+    } catch (err) {
+      console.error(err);
+      setToast({ message: 'Failed to save draft. Please try again.', type: 'error' });
+    } finally {
+      setSavingDraft(false);
+    }
   }
 
   async function handleGeneratePDF() {
@@ -92,14 +101,19 @@ export default function ContainerQuoteForm({ rates, company, userId }: Props) {
       await supabase.from('quotes').update({ qr_code_data: qrPayload }).eq('id', saved.id);
       const pdfBlob = generateQuotePDF({ ...saved, created_at: saved.created_at }, company, qrDataUrl);
       const base64  = await blobToBase64(pdfBlob);
-      await fetch('/api/generate-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quote_id: saved.id, pdf_base64: base64 }) });
+      const pdfRes  = await fetch('/api/generate-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quote_id: saved.id, pdf_base64: base64 }) });
+      if (!pdfRes.ok) throw new Error('PDF generation failed');
       const urlRes = await fetch(`/api/documents/signed-url?path=quotes/${userId}/${saved.id}.pdf`);
       const { signedUrl } = await urlRes.json();
       if (typeof navigator !== 'undefined' && navigator.share) await navigator.share({ title: `Quote ${saved.quote_number}`, url: signedUrl });
       else window.open(signedUrl, '_blank');
       router.push('/quotes');
-    } catch (err) { console.error(err); }
-    finally { setGeneratingPDF(false); }
+    } catch (err) {
+      console.error(err);
+      setToast({ message: 'Failed to generate PDF. Please try again.', type: 'error' });
+    } finally {
+      setGeneratingPDF(false);
+    }
   }
 
   return (
@@ -120,15 +134,19 @@ export default function ContainerQuoteForm({ rates, company, userId }: Props) {
 
       <section className="space-y-4">
         <h2 className="text-base font-semibold text-navy uppercase tracking-wide">Pricing</h2>
-        <Input label="Container Load Transport (R)" type="number" min="0" value={loadPrice}  onChange={e => setLoadPrice(+e.target.value)} />
-        <Input label="Container Land Fee (R)"       type="number" min="0" value={landFee}    onChange={e => setLandFee(+e.target.value)} />
-        <Input label="Container Lot Payment (R)"    type="number" min="0" value={lotPayment} onChange={e => setLotPayment(+e.target.value)} />
+        <Input label="Container Load Transport ($)" type="number" min="0" value={loadPrice}  onChange={e => setLoadPrice(+e.target.value)} />
+        <Input label="Container Land Fee ($)"       type="number" min="0" value={landFee}    onChange={e => setLandFee(+e.target.value)} />
+        <Input label="Container Lot Payment ($)"    type="number" min="0" value={lotPayment} onChange={e => setLotPayment(+e.target.value)} />
       </section>
 
       <section><LineItemsEditor items={extraItems} onChange={setExtraItems} /></section>
       <section><Textarea label="Notes (Optional)" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any additional notes..." /></section>
 
       <RunningTotal total={total} onSaveDraft={handleSaveDraft} onGeneratePDF={handleGeneratePDF} savingDraft={savingDraft} generatingPDF={generatingPDF} />
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
+      )}
     </div>
   );
 }

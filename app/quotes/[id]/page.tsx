@@ -5,7 +5,7 @@ import BottomNav from '@/components/layout/BottomNav';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import QuoteActions from '@/components/quotes/QuoteActions';
-import { formatZAR } from '@/lib/utils/formatCurrency';
+import { formatCurrency } from '@/lib/utils/formatCurrency';
 import type { Quote, QuoteStatus } from '@/types/quote';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -70,16 +70,16 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
                 <div className="flex-1 min-w-0">
                   <p className="text-navy text-base font-medium">{item.label}</p>
                   {item.quantity > 1 && (
-                    <p className="text-muted text-sm">{item.quantity} × {formatZAR(item.unit_price)}</p>
+                    <p className="text-muted text-sm">{item.quantity} × {formatCurrency(item.unit_price)}</p>
                   )}
                 </div>
-                <p className="text-navy font-semibold shrink-0">{formatZAR(item.total)}</p>
+                <p className="text-navy font-semibold shrink-0">{formatCurrency(item.total)}</p>
               </div>
             ))}
           </div>
           <div className="flex items-center justify-between px-4 py-4 bg-gray-50 rounded-b-2xl border-t border-gray-200">
             <p className="text-navy font-bold text-base uppercase tracking-wide">Total</p>
-            <p className="text-navy font-bold text-xl">{formatZAR(q.total)}</p>
+            <p className="text-navy font-bold text-xl">{formatCurrency(q.total)}</p>
           </div>
         </Card>
 

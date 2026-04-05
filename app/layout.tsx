@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import PWARegister from '@/components/PWARegister';
 
 export const metadata: Metadata = {
-  title: "Dad's Auto Group",
+  title: "MoniekensAutoLLC",
   description: 'Business management app — quotes, documents & QR scanning',
   manifest: '/manifest.json',
-  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: "Dad's Auto Group" },
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: "MoniekensAutoLLC" },
 };
 
 export const viewport: Viewport = {
@@ -19,7 +20,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-app antialiased">{children}</body>
+      <body className="min-h-screen bg-app antialiased">
+        {children}
+        <PWARegister />
+      </body>
     </html>
   );
 }

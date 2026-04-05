@@ -9,6 +9,7 @@ import { generateQuotePDF } from '@/lib/pdf/generateQuotePDF';
 import { generateQRDataUrl } from '@/lib/qr';
 import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
+import Toast from '@/components/ui/Toast';
 import VehicleTypeToggle from './VehicleTypeToggle';
 import LineItemsEditor, { type ExtraItem } from './LineItemsEditor';
 import RunningTotal from './RunningTotal';
@@ -39,6 +40,7 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
   const [errors,        setErrors]        = useState<Record<string, string>>({});
   const [savingDraft,   setSavingDraft]   = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
+  const [toast,         setToast]         = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // ── Derived totals ────────────────────────────────────────────────────────
   const timeCuttingTotal  = rates.time_cutting_rate * numCars;
@@ -66,7 +68,7 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
       { label: 'Container Land Fee',        quantity: 1, unit_price: landFee,    total: landFee },
     ];
     if (vehicleType) {
-      const label = vehicleType === 'amg' ? 'AMG' : vehicleType === 'suv' ? 'SUV' : 'Pickup Truck';
+      const label = vehicleType === 'amg' ? 'Mercedes' : vehicleType === 'suv' ? 'SUV' : 'Pickup Truck';
       items.push({ label: `${label} Surcharge (${numCars} car${numCars > 1 ? 's' : ''})`, quantity: numCars, unit_price: rates[`${vehicleType}_surcharge` as keyof RateSettings] as number, total: vehicleSurcharge });
     }
     extraItems.forEach(ei => {
@@ -114,9 +116,11 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
     setSavingDraft(true);
     try {
       await saveQuote('draft');
-      router.push('/quotes');
+      setToast({ message: 'Draft saved successfully', type: 'success' });
+      setTimeout(() => router.push('/quotes'), 1200);
     } catch (err) {
       console.error(err);
+      setToast({ message: 'Failed to save draft. Please try again.', type: 'error' });
     } finally {
       setSavingDraft(false);
     }
@@ -130,7 +134,6 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
       const qrPayload  = `${window.location.origin}/quotes/${saved.id}`;
       const qrDataUrl  = await generateQRDataUrl(qrPayload);
 
-      // Store QR payload in the quote record
       const supabase = createClient();
       await supabase.from('quotes').update({ qr_code_data: qrPayload }).eq('id', saved.id);
 
@@ -141,11 +144,12 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
       );
 
       const base64 = await blobToBase64(pdfBlob);
-      await fetch('/api/generate-pdf', {
+      const pdfRes = await fetch('/api/generate-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quote_id: saved.id, pdf_base64: base64 }),
       });
+      if (!pdfRes.ok) throw new Error('PDF generation failed');
 
       const urlRes = await fetch(`/api/documents/signed-url?path=quotes/${userId}/${saved.id}.pdf`);
       const { signedUrl } = await urlRes.json();
@@ -159,6 +163,7 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
       router.push('/quotes');
     } catch (err) {
       console.error(err);
+      setToast({ message: 'Failed to generate PDF. Please try again.', type: 'error' });
     } finally {
       setGeneratingPDF(false);
     }
@@ -197,19 +202,19 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
         <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
           <div className="flex justify-between text-base">
             <span className="text-muted">Time Cutting ({numCars} car{numCars > 1 ? 's' : ''})</span>
-            <span className="font-semibold text-navy">R {timeCuttingTotal.toLocaleString()}</span>
+            <span className="font-semibold text-navy">$ {timeCuttingTotal.toLocaleString()}</span>
           </div>
           {vehicleType && (
             <div className="flex justify-between text-base">
               <span className="text-muted">Vehicle Surcharge</span>
-              <span className="font-semibold text-navy">R {vehicleSurcharge.toLocaleString()}</span>
+              <span className="font-semibold text-navy">$ {vehicleSurcharge.toLocaleString()}</span>
             </div>
           )}
         </div>
 
-        <Input label="Container Load Transport (R)" type="number" min="0" value={loadPrice}  onChange={e => setLoadPrice(+e.target.value)}  />
-        <Input label="Container Lot Payment (R)"    type="number" min="0" value={lotPayment} onChange={e => setLotPayment(+e.target.value)} />
-        <Input label="Container Land Fee (R)"       type="number" min="0" value={landFee}    onChange={e => setLandFee(+e.target.value)}    />
+        <Input label="Container Load Transport ($)" type="number" min="0" value={loadPrice}  onChange={e => setLoadPrice(+e.target.value)}  />
+        <Input label="Container Lot Payment ($)"    type="number" min="0" value={lotPayment} onChange={e => setLotPayment(+e.target.value)} />
+        <Input label="Container Land Fee ($)"       type="number" min="0" value={landFee}    onChange={e => setLandFee(+e.target.value)}    />
       </section>
 
       {/* Additional items */}
@@ -229,6 +234,10 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
         savingDraft={savingDraft}
         generatingPDF={generatingPDF}
       />
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
+      )}
     </div>
   );
 }

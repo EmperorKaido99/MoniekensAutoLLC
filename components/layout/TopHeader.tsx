@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import Image from 'next/image';
 
 interface TopHeaderProps {
   title: string;
@@ -14,12 +15,11 @@ export default function TopHeader({ title, subtitle, action, showBranding = fals
     <header className="bg-navy text-white px-4 pt-4 pb-5">
       {showBranding && (
         <div className="flex items-center gap-3 mb-4">
-          {/* Logo badge */}
-          <div className="w-10 h-10 rounded-xl bg-amber flex items-center justify-center shrink-0">
-            <span className="text-white font-bold text-lg">D</span>
+          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-white">
+            <Image src="/images/logo.png" alt="Logo" width={40} height={40} className="w-full h-full object-contain" />
           </div>
           <div>
-            <p className="font-bold text-base leading-tight">Dad's Auto Group</p>
+            <p className="font-bold text-base leading-tight">MoniekensAutoLLC</p>
             <p className="text-white/60 text-xs">Business Management</p>
           </div>
         </div>

@@ -1,9 +1,12 @@
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import TopHeader from '@/components/layout/TopHeader';
 import BottomNav from '@/components/layout/BottomNav';
 import QuoteCard from '@/components/quotes/QuoteCard';
+import QuoteSearchBar from '@/components/quotes/QuoteSearchBar';
+import Skeleton from '@/components/ui/Skeleton';
 import { Plus } from 'lucide-react';
 import type { Quote, QuoteStatus } from '@/types/quote';
 
@@ -17,14 +20,15 @@ const STATUS_TABS: { label: string; value: QuoteStatus | 'all' }[] = [
 export default async function QuotesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; q?: string }>;
 }) {
   const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) redirect('/login');
 
-  const { status } = await searchParams;
+  const { status, q } = await searchParams;
   const activeStatus = status ?? 'all';
+  const searchQuery  = q?.trim() ?? '';
 
   let query = supabase
     .from('quotes')
@@ -34,6 +38,10 @@ export default async function QuotesPage({
 
   if (activeStatus !== 'all') {
     query = query.eq('status', activeStatus);
+  }
+
+  if (searchQuery) {
+    query = query.or(`customer_name.ilike.%${searchQuery}%,quote_number.ilike.%${searchQuery}%`);
   }
 
   const { data: quotes } = await query;
@@ -55,33 +63,52 @@ export default async function QuotesPage({
 
       {/* Status filter tabs */}
       <div className="bg-white border-b border-gray-100 px-4 flex gap-1 overflow-x-auto scrollbar-none py-2">
-        {STATUS_TABS.map(tab => (
-          <Link
-            key={tab.value}
-            href={tab.value === 'all' ? '/quotes' : `/quotes?status=${tab.value}`}
-            className={[
-              'px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-colors',
-              activeStatus === tab.value
-                ? 'bg-navy text-white'
-                : 'bg-gray-100 text-muted hover:bg-gray-200',
-            ].join(' ')}
-          >
-            {tab.label}
-          </Link>
-        ))}
+        {STATUS_TABS.map(tab => {
+          const params = new URLSearchParams();
+          if (tab.value !== 'all') params.set('status', tab.value);
+          if (searchQuery) params.set('q', searchQuery);
+          const href = `/quotes${params.toString() ? `?${params.toString()}` : ''}`;
+          return (
+            <Link
+              key={tab.value}
+              href={href}
+              className={[
+                'px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-colors',
+                activeStatus === tab.value
+                  ? 'bg-navy text-white'
+                  : 'bg-gray-100 text-muted hover:bg-gray-200',
+              ].join(' ')}
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Search bar */}
+      <div className="bg-white px-4 py-3 border-b border-gray-100">
+        <Suspense fallback={<Skeleton className="h-10 w-full rounded-xl" />}>
+          <QuoteSearchBar value={searchQuery} />
+        </Suspense>
       </div>
 
       <div className="px-4 py-4 space-y-3">
         {!quotes?.length ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-muted text-lg font-medium">No quotes yet</p>
-            <p className="text-muted text-sm mt-1">Tap New to create your first quote</p>
-            <Link
-              href="/quotes/new"
-              className="mt-5 bg-amber text-white font-semibold px-6 py-3 rounded-xl inline-flex items-center gap-2"
-            >
-              <Plus size={18} /> New Quote
-            </Link>
+            <p className="text-muted text-lg font-medium">
+              {searchQuery ? `No results for "${searchQuery}"` : 'No quotes yet'}
+            </p>
+            <p className="text-muted text-sm mt-1">
+              {searchQuery ? 'Try a different name or quote number' : 'Tap New to create your first quote'}
+            </p>
+            {!searchQuery && (
+              <Link
+                href="/quotes/new"
+                className="mt-5 bg-amber text-white font-semibold px-6 py-3 rounded-xl inline-flex items-center gap-2"
+              >
+                <Plus size={18} /> New Quote
+              </Link>
+            )}
           </div>
         ) : (
           quotes.map(q => <QuoteCard key={q.id} quote={q as Quote} />)

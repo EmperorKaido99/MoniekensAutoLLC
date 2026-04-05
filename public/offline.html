@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <title>You're offline — MoniekensAutoLLC</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #F4F5F7;
+      color: #111827;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+    .icon {
+      width: 72px;
+      height: 72px;
+      background: #1B4D73;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+    }
+    .icon span {
+      color: #fff;
+      font-size: 32px;
+      font-weight: 700;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1B4D73;
+      margin-bottom: 10px;
+    }
+    p {
+      font-size: 16px;
+      color: #6B7280;
+      line-height: 1.6;
+      max-width: 300px;
+      margin: 0 auto 28px;
+    }
+    button {
+      background: #1B7339;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      padding: 16px 32px;
+      min-height: 56px;
+      cursor: pointer;
+      width: 100%;
+      max-width: 300px;
+    }
+    button:active { opacity: 0.8; }
+  </style>
+</head>
+<body>
+  <div class="icon"><img src="/images/logo.png" alt="Logo" style="width:100%;height:100%;object-fit:contain;" /></div>
+  <h1>You're offline</h1>
+  <p>No internet connection detected. Check your connection and try again.</p>
+  <button onclick="window.location.reload()">Try Again</button>
+</body>
+</html>

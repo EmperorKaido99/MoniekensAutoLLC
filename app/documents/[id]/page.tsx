@@ -6,11 +6,13 @@ import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import PDFViewer from '@/components/documents/PDFViewer';
 import DocumentDeleteButton from '@/components/documents/DocumentDeleteButton';
-import { formatZAR } from '@/lib/utils/formatCurrency';
+import DocumentActions from '@/components/documents/DocumentActions';
+import { formatCurrency } from '@/lib/utils/formatCurrency';
 import type { VaultDocument, DocumentType, DOC_TYPE_LABELS } from '@/types/document';
 import { DOC_TYPE_LABELS as LABELS } from '@/types/document';
 
-const TYPE_TO_BADGE: Record<DocumentType, 'deed' | 'invoice' | 'quote' | 'other'> = {
+const TYPE_TO_BADGE: Record<DocumentType, 'car_title' | 'deed' | 'invoice' | 'quote' | 'other'> = {
+  car_title:    'car_title',
   deed_of_sale: 'deed',
   invoice:      'invoice',
   quote:        'quote',
@@ -70,7 +72,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
             {d.car_price != null && (
               <div className="flex justify-between py-2">
                 <span className="text-muted text-sm">Price</span>
-                <span className="text-navy text-sm font-semibold">{formatZAR(d.car_price)}</span>
+                <span className="text-navy text-sm font-semibold">{formatCurrency(d.car_price)}</span>
               </div>
             )}
             {d.notes && (
@@ -84,6 +86,9 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
 
         {/* PDF viewer */}
         <PDFViewer filePath={d.file_path} />
+
+        {/* Download / Print */}
+        <DocumentActions filePath={d.file_path} />
 
         {/* Delete */}
         <DocumentDeleteButton docId={d.id} />

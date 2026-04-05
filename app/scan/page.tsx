@@ -36,7 +36,7 @@ export default function ScanPage() {
       // Not JSON either
     }
 
-    setError('This QR code is not linked to a Dad\'s Auto Group record.');
+    setError('This QR code is not linked to a MoniekensAutoLLC record.');
     setScanned(false);
   }, [scanned, router]);
 

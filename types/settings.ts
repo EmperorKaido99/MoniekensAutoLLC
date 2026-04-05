@@ -34,7 +34,7 @@ export const DEFAULT_RATES: RateSettings = {
 };
 
 export const DEFAULT_COMPANY: CompanySettings = {
-  company_name:    "Dad's Auto Group",
+  company_name:    "MoniekensAutoLLC",
   company_phone:   '',
   company_email:   '',
   company_address: '',

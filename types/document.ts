@@ -1,4 +1,4 @@
-export type DocumentType = 'deed_of_sale' | 'invoice' | 'quote' | 'other';
+export type DocumentType = 'car_title' | 'deed_of_sale' | 'invoice' | 'quote' | 'other';
 
 export interface VaultDocument {
   id:            string;
@@ -17,6 +17,7 @@ export interface VaultDocument {
 }
 
 export const DOC_TYPE_LABELS: Record<DocumentType, string> = {
+  car_title:    'Car Title',
   deed_of_sale: 'Deed of Sale',
   invoice:      'Invoice',
   quote:        'Quote',

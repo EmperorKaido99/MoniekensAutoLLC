@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
-import { formatZAR } from '@/lib/utils/formatCurrency';
+import { formatCurrency } from '@/lib/utils/formatCurrency';
 import type { VaultDocument, DocumentType } from '@/types/document';
 import { FileText } from 'lucide-react';
 
-const TYPE_TO_BADGE: Record<DocumentType, 'deed' | 'invoice' | 'quote' | 'other'> = {
+const TYPE_TO_BADGE: Record<DocumentType, 'car_title' | 'deed' | 'invoice' | 'quote' | 'other'> = {
+  car_title:    'car_title',
   deed_of_sale: 'deed',
   invoice:      'invoice',
   quote:        'quote',
@@ -30,7 +31,7 @@ export default function DocumentCard({ doc }: { doc: VaultDocument }) {
             <p className="text-muted text-sm mt-1">{carInfo}</p>
           )}
           {doc.car_price != null && (
-            <p className="text-navy text-sm font-semibold mt-0.5">{formatZAR(doc.car_price)}</p>
+            <p className="text-navy text-sm font-semibold mt-0.5">{formatCurrency(doc.car_price)}</p>
           )}
           <p className="text-muted text-xs mt-1">
             {new Date(doc.uploaded_at).toLocaleString('en-ZA', {

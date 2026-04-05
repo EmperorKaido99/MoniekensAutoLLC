@@ -1,4 +1,4 @@
-type BadgeVariant = 'draft' | 'sent' | 'paid' | 'deed' | 'invoice' | 'quote' | 'other';
+type BadgeVariant = 'draft' | 'sent' | 'paid' | 'deed' | 'invoice' | 'quote' | 'car_title' | 'other';
 
 interface BadgeProps {
   variant: BadgeVariant;
@@ -9,7 +9,8 @@ const config: Record<BadgeVariant, { bg: string; text: string; label: string }> 
   draft:   { bg: 'bg-amber/15',   text: 'text-amber',   label: 'Draft' },
   sent:    { bg: 'bg-info/15',    text: 'text-info',    label: 'Sent' },
   paid:    { bg: 'bg-success/15', text: 'text-success', label: 'Paid' },
-  deed:    { bg: 'bg-amber/15',   text: 'text-amber',   label: 'Deed of Sale' },
+  car_title: { bg: 'bg-navy/10',   text: 'text-navy',    label: 'Car Title' },
+  deed:      { bg: 'bg-amber/15', text: 'text-amber',   label: 'Deed of Sale' },
   invoice: { bg: 'bg-success/15', text: 'text-success', label: 'Invoice' },
   quote:   { bg: 'bg-info/15',    text: 'text-info',    label: 'Quote' },
   other:   { bg: 'bg-gray-100',   text: 'text-muted',   label: 'Other' },

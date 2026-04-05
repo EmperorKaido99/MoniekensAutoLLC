@@ -44,7 +44,7 @@ export function generateQuotePDF(quote: QuotePDFInput, company: CompanySettings,
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(17);
   doc.setTextColor(...WHITE);
-  doc.text(company.company_name || "Dad's Auto Group", M, 16);
+  doc.text(company.company_name || "MoniekensAutoLLC", M, 16);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);

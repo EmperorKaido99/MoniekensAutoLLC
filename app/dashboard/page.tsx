@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/server';
 import TopHeader from '@/components/layout/TopHeader';
 import BottomNav from '@/components/layout/BottomNav';
@@ -14,8 +15,8 @@ function getGreeting() {
   return 'Good evening';
 }
 
-function formatZAR(amount: number) {
-  return new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR', maximumFractionDigits: 0 }).format(amount);
+function formatAmount(amount: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount);
 }
 
 function formatDate() {
@@ -31,11 +32,14 @@ export default async function DashboardPage() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-  const [quotesThisMonth, docCount, paidTotal] = await Promise.all([
+  const [quotesThisMonth, docCount, paidTotal, companyResult] = await Promise.all([
     supabase.from('quotes').select('id', { count: 'exact', head: true }).gte('created_at', startOfMonth),
     supabase.from('documents').select('id', { count: 'exact', head: true }),
     supabase.from('quotes').select('total').eq('status', 'paid').gte('created_at', startOfMonth),
+    supabase.from('company_settings').select('company_name, currency').eq('user_id', session.user.id).single(),
   ]);
+
+  const companyName = companyResult.data?.company_name || "MoniekensAutoLLC";
 
   const totalInvoiced = (paidTotal.data ?? []).reduce((sum: number, q: { total: number }) => sum + (q.total ?? 0), 0);
 
@@ -56,11 +60,11 @@ export default async function DashboardPage() {
       <header className="bg-navy text-white px-4 pt-4 pb-6">
         {/* Branding row */}
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-10 h-10 rounded-xl bg-amber flex items-center justify-center shrink-0">
-            <span className="text-white font-bold text-lg">D</span>
+          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-white">
+            <Image src="/images/logo.png" alt="Logo" width={40} height={40} className="w-full h-full object-contain" />
           </div>
           <div>
-            <p className="font-bold text-base leading-tight">Dad's Auto Group</p>
+            <p className="font-bold text-base leading-tight">{companyName}</p>
             <p className="text-white/60 text-xs">Business Management</p>
           </div>
         </div>
@@ -74,7 +78,7 @@ export default async function DashboardPage() {
           {[
             { label: 'Quotes\nThis Month', value: String(quotesThisMonth.count ?? 0) },
             { label: 'Documents\nStored',  value: String(docCount.count ?? 0) },
-            { label: 'Invoiced\nThis Month', value: formatZAR(totalInvoiced) },
+            { label: 'Invoiced\nThis Month', value: formatAmount(totalInvoiced) },
           ].map(({ label, value }) => (
             <div key={label} className="bg-white/10 rounded-2xl p-3 text-center">
               <p className="text-white font-bold text-xl leading-tight">{value}</p>
@@ -128,7 +132,7 @@ export default async function DashboardPage() {
                       <p className="text-muted text-sm mt-0.5">{quoteTypeLabel[q.quote_type] ?? q.quote_type}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
-                      <p className="font-bold text-navy text-base">{formatZAR(q.total)}</p>
+                      <p className="font-bold text-navy text-base">{formatAmount(q.total)}</p>
                       <Badge variant={q.status as 'draft' | 'sent' | 'paid'} />
                     </div>
                   </Card>

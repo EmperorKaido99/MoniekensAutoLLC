@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
-import { formatZAR } from '@/lib/utils/formatCurrency';
+import { formatCurrency } from '@/lib/utils/formatCurrency';
 import type { Quote, QuoteStatus } from '@/types/quote';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -20,7 +20,7 @@ export default function QuoteCard({ quote }: { quote: Quote }) {
           <p className="text-muted text-xs mt-0.5">{quote.quote_number}</p>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <p className="font-bold text-navy text-base">{formatZAR(quote.total)}</p>
+          <p className="font-bold text-navy text-base">{formatCurrency(quote.total)}</p>
           <Badge variant={quote.status as QuoteStatus} />
         </div>
       </Card>
