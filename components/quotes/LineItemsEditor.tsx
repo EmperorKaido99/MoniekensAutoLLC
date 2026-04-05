@@ -60,8 +60,9 @@ export default function LineItemsEditor({ items, onChange }: Props) {
               <input
                 type="number"
                 min="1"
-                value={item.quantity}
-                onChange={e => update(i, 'quantity', Math.max(1, +e.target.value))}
+                value={item.quantity || ''}
+                onChange={e => update(i, 'quantity', +e.target.value)}
+                onBlur={e => { if (!e.target.value || +e.target.value < 1) update(i, 'quantity', 1); }}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-navy focus:outline-none focus:ring-2 focus:ring-amber"
               />
             </div>
@@ -73,7 +74,7 @@ export default function LineItemsEditor({ items, onChange }: Props) {
                 type="number"
                 min="0"
                 step="0.01"
-                value={item.unit_price}
+                value={item.unit_price || ''}
                 onChange={e => update(i, 'unit_price', +e.target.value)}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-navy focus:outline-none focus:ring-2 focus:ring-amber"
               />

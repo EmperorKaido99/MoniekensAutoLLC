@@ -219,9 +219,9 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
             </div>
           )}
         </div>
-        <Input label="Container Load Transport ($)" type="number" min="0" value={loadPrice}  onChange={e => setLoadPrice(+e.target.value)}  />
-        <Input label="Container Lot Payment ($)"    type="number" min="0" value={lotPayment} onChange={e => setLotPayment(+e.target.value)} />
-        <Input label="Container Land Fee ($)"       type="number" min="0" value={landFee}    onChange={e => setLandFee(+e.target.value)}    />
+        <Input label="Container Load Transport ($)" type="number" min="0" value={loadPrice  || ''} onChange={e => setLoadPrice(+e.target.value)}  />
+        <Input label="Container Lot Payment ($)"    type="number" min="0" value={lotPayment || ''} onChange={e => setLotPayment(+e.target.value)} />
+        <Input label="Container Land Fee ($)"       type="number" min="0" value={landFee    || ''} onChange={e => setLandFee(+e.target.value)}    />
       </section>
 
       <section>

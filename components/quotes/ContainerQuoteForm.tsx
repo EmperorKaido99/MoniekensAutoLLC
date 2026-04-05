@@ -135,9 +135,9 @@ export default function ContainerQuoteForm({ rates, company, userId }: Props) {
 
       <section className="space-y-4">
         <h2 className="text-base font-semibold text-navy uppercase tracking-wide">Pricing</h2>
-        <Input label="Container Load Transport ($)" type="number" min="0" value={loadPrice}  onChange={e => setLoadPrice(+e.target.value)} />
-        <Input label="Container Land Fee ($)"       type="number" min="0" value={landFee}    onChange={e => setLandFee(+e.target.value)} />
-        <Input label="Container Lot Payment ($)"    type="number" min="0" value={lotPayment} onChange={e => setLotPayment(+e.target.value)} />
+        <Input label="Container Load Transport ($)" type="number" min="0" value={loadPrice  || ''} onChange={e => setLoadPrice(+e.target.value)} />
+        <Input label="Container Land Fee ($)"       type="number" min="0" value={landFee    || ''} onChange={e => setLandFee(+e.target.value)} />
+        <Input label="Container Lot Payment ($)"    type="number" min="0" value={lotPayment || ''} onChange={e => setLotPayment(+e.target.value)} />
       </section>
 
       <section><LineItemsEditor items={extraItems} onChange={setExtraItems} /></section>

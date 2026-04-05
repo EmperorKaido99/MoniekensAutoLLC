@@ -78,7 +78,7 @@ export default function RatesForm({ initialRates, initialCompany, userId, hasExi
               type="number"
               min="0"
               step="0.01"
-              value={rates[key] as number}
+              value={(rates[key] as number) || ''}
               onChange={e => setRate(key, +e.target.value)}
             />
           ))}
