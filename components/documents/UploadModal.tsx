@@ -87,7 +87,7 @@ export default function UploadModal({ open, onClose, userId }: Props) {
         reader.readAsDataURL(image);
       });
 
-      // Create PDF sized to the image
+      // Get image dimensions to determine orientation
       const img = await new Promise<HTMLImageElement>((resolve, reject) => {
         const el = new Image();
         el.onload  = () => resolve(el);
@@ -96,8 +96,22 @@ export default function UploadModal({ open, onClose, userId }: Props) {
       });
 
       const isLandscape = img.width > img.height;
-      const doc = new jsPDF({ orientation: isLandscape ? 'landscape' : 'portrait', unit: 'px', format: [img.width, img.height] });
-      doc.addImage(imgDataUrl, 'JPEG', 0, 0, img.width, img.height);
+      const doc = new jsPDF({ orientation: isLandscape ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      // Scale image to fill the page while keeping aspect ratio
+      const imgRatio  = img.width / img.height;
+      const pageRatio = pageW / pageH;
+      let drawW = pageW;
+      let drawH = pageH;
+      if (imgRatio > pageRatio) {
+        drawH = pageW / imgRatio;
+      } else {
+        drawW = pageH * imgRatio;
+      }
+      const offsetX = (pageW - drawW) / 2;
+      const offsetY = (pageH - drawH) / 2;
+      doc.addImage(imgDataUrl, 'JPEG', offsetX, offsetY, drawW, drawH);
       const pdfBlob = doc.output('blob');
 
       const pdfFile = new File([pdfBlob], image.name.replace(/\.[^.]+$/, '') + '.pdf', { type: 'application/pdf' });

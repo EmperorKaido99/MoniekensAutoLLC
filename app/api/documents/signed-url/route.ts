@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase.storage
     .from('documents')
-    .createSignedUrl(path, 60);
+    .createSignedUrl(path, 3600);
 
   if (error || !data?.signedUrl) {
     return NextResponse.json({ error: error?.message ?? 'Failed to create signed URL' }, { status: 500 });
