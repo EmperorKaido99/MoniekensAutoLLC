@@ -78,15 +78,24 @@ export default function QuoteActions({ quote, userId, company }: Props) {
   async function handleDownloadPDF() {
     setPdfError(null);
     setLoadingPDF(true);
-    // Pre-open now (user gesture) so popup blockers don't kill window.open after awaits
-    const newWindow = window.open('', '_blank');
     try {
       const signedUrl = await getOrGeneratePdfSignedUrl();
-      if (newWindow) newWindow.location.href = signedUrl;
-      else window.open(signedUrl, '_blank');
+      // Fetch the PDF bytes then trigger a real file-save via a blob URL.
+      // This avoids window.open (popup blocker) and forces a download instead
+      // of opening the PDF inline in the browser.
+      const res = await fetch(signedUrl);
+      if (!res.ok) throw new Error('Failed to fetch PDF file');
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `Quote-${quote.quote_number}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(objectUrl);
     } catch (err: any) {
-      if (newWindow) newWindow.close();
-      setPdfError(err?.message ?? 'Could not open PDF. Please try again.');
+      setPdfError(err?.message ?? 'Could not download PDF. Please try again.');
     } finally {
       setLoadingPDF(false);
     }
@@ -95,6 +104,7 @@ export default function QuoteActions({ quote, userId, company }: Props) {
   async function handlePrint() {
     setPdfError(null);
     setLoadingPrint(true);
+    // Pre-open now (user gesture) so popup blockers let us redirect it later
     const newWindow = window.open('', '_blank');
     try {
       const signedUrl = await getOrGeneratePdfSignedUrl();
