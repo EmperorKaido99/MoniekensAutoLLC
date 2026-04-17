@@ -127,6 +127,12 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
   async function handleGeneratePDF() {
     if (!validate()) return;
     setGeneratingPDF(true);
+
+    // Pre-open a blank window now (while we still have the user gesture) so popup
+    // blockers don't kill window.open() after the async chain finishes.
+    const canShare = typeof navigator !== 'undefined' && !!navigator.share;
+    const newWindow = canShare ? null : window.open('', '_blank');
+
     try {
       const saved      = await saveQuote('sent');
       const qrPayload  = `${window.location.origin}/quotes/${saved.id}`;
@@ -149,13 +155,24 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quote_id: saved.id, pdf_base64: base64 }),
       });
-      if (!pdfRes.ok) throw new Error('PDF generation failed');
+      if (!pdfRes.ok) throw new Error('PDF upload failed');
 
       const urlRes = await fetch(`/api/documents/signed-url?path=quotes/${userId}/${saved.id}.pdf`);
-      const { signedUrl } = await urlRes.json();
+      if (!urlRes.ok) throw new Error('Failed to get download link');
+      const { signedUrl, error: urlError } = await urlRes.json();
+      if (urlError || !signedUrl) throw new Error(urlError ?? 'Failed to get download link');
 
-      if (typeof navigator !== 'undefined' && navigator.share) {
-        await navigator.share({ title: `Quote ${saved.quote_number}`, url: signedUrl });
+      if (canShare) {
+        try {
+          await navigator.share({ title: `Quote ${saved.quote_number}`, url: signedUrl });
+        } catch (shareErr: any) {
+          // AbortError = user dismissed the share sheet — not a real failure
+          if (shareErr?.name !== 'AbortError') {
+            window.open(signedUrl, '_blank');
+          }
+        }
+      } else if (newWindow) {
+        newWindow.location.href = signedUrl;
       } else {
         window.open(signedUrl, '_blank');
       }
@@ -163,6 +180,7 @@ export default function ExportQuoteForm({ rates, company, userId }: Props) {
       router.push('/quotes');
     } catch (err) {
       console.error(err);
+      if (newWindow) newWindow.close();
       setToast({ message: 'Failed to generate PDF. Please try again.', type: 'error' });
     } finally {
       setGeneratingPDF(false);

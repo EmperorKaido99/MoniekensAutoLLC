@@ -104,6 +104,10 @@ export default function TowingQuoteForm({ rates, company, userId }: Props) {
   async function handleGeneratePDF() {
     if (!validate()) return;
     setGeneratingPDF(true);
+
+    const canShare = typeof navigator !== 'undefined' && !!navigator.share;
+    const newWindow = canShare ? null : window.open('', '_blank');
+
     try {
       const saved     = await saveQuote('sent');
       const qrPayload = `${window.location.origin}/quotes/${saved.id}`;
@@ -114,14 +118,26 @@ export default function TowingQuoteForm({ rates, company, userId }: Props) {
       const pdfBlob = generateQuotePDF({ ...saved, created_at: saved.created_at }, company, qrDataUrl, logoDataUrl);
       const base64  = await blobToBase64(pdfBlob);
       const pdfRes  = await fetch('/api/generate-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quote_id: saved.id, pdf_base64: base64 }) });
-      if (!pdfRes.ok) throw new Error('PDF generation failed');
+      if (!pdfRes.ok) throw new Error('PDF upload failed');
       const urlRes = await fetch(`/api/documents/signed-url?path=quotes/${userId}/${saved.id}.pdf`);
-      const { signedUrl } = await urlRes.json();
-      if (typeof navigator !== 'undefined' && navigator.share) await navigator.share({ title: `Quote ${saved.quote_number}`, url: signedUrl });
-      else window.open(signedUrl, '_blank');
+      if (!urlRes.ok) throw new Error('Failed to get download link');
+      const { signedUrl, error: urlError } = await urlRes.json();
+      if (urlError || !signedUrl) throw new Error(urlError ?? 'Failed to get download link');
+      if (canShare) {
+        try {
+          await navigator.share({ title: `Quote ${saved.quote_number}`, url: signedUrl });
+        } catch (shareErr: any) {
+          if (shareErr?.name !== 'AbortError') window.open(signedUrl, '_blank');
+        }
+      } else if (newWindow) {
+        newWindow.location.href = signedUrl;
+      } else {
+        window.open(signedUrl, '_blank');
+      }
       router.push('/quotes');
     } catch (err) {
       console.error(err);
+      if (newWindow) newWindow.close();
       setToast({ message: 'Failed to generate PDF. Please try again.', type: 'error' });
     } finally {
       setGeneratingPDF(false);
