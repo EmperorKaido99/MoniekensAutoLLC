@@ -37,12 +37,13 @@ export function generateQuotePDF(quote: QuotePDFInput, company: CompanySettings,
   const CW   = PW - M * 2;
 
   // ── Navy header band ──────────────────────────────────────────────────────
+  // Height: 56mm to accommodate company name + type + phone/email + address
   doc.setFillColor(...NAVY);
-  doc.rect(0, 0, PW, 44, 'F');
+  doc.rect(0, 0, PW, 56, 'F');
 
   // Logo (if available)
-  const logoSize = 22;
-  const textX    = logoDataUrl ? M + logoSize + 4 : M;
+  const logoSize = 24;
+  const textX    = logoDataUrl ? M + logoSize + 5 : M;
   if (logoDataUrl) {
     doc.addImage(logoDataUrl, 'PNG', M, 5, logoSize, logoSize);
   }
@@ -53,10 +54,25 @@ export function generateQuotePDF(quote: QuotePDFInput, company: CompanySettings,
   doc.setTextColor(...WHITE);
   doc.text(company.company_name || 'MoniekensAutoLLC', textX, 16);
 
+  // Quote type
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(180, 210, 235);
   doc.text(TYPE_LABELS[quote.quote_type], textX, 23);
+
+  // Company phone · email
+  const headerContact = [company.company_phone, company.company_email].filter(Boolean).join('  ·  ');
+  if (headerContact) {
+    doc.setFontSize(8);
+    doc.text(headerContact, textX, 31);
+  }
+
+  // Company address
+  if (company.company_address) {
+    doc.setFontSize(8);
+    const addrLine = doc.splitTextToSize(company.company_address, PW / 2 - textX - 5);
+    doc.text(addrLine[0], textX, 39); // single line to keep header tidy
+  }
 
   // QUOTATION — right aligned
   doc.setFont('helvetica', 'bold');
@@ -67,35 +83,66 @@ export function generateQuotePDF(quote: QuotePDFInput, company: CompanySettings,
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(180, 210, 235);
-  doc.text(`No: ${quote.quote_number}`, PW - M, 24, { align: 'right' });
+  doc.text(`No: ${quote.quote_number}`, PW - M, 26, { align: 'right' });
   doc.text(
     `Date: ${new Date(quote.created_at).toLocaleDateString('en-ZA')}`,
-    PW - M, 31, { align: 'right' }
+    PW - M, 34, { align: 'right' }
   );
 
-  let y = 54;
+  let y = 66;
 
-  // ── Client info panel ─────────────────────────────────────────────────────
+  // ── Two-column info panels ─────────────────────────────────────────────────
+  const halfW = (CW - 5) / 2;
+
+  // LEFT: FROM (company)
   doc.setFillColor(...LIGHT);
-  doc.roundedRect(M, y, CW, 28, 3, 3, 'F');
+  doc.roundedRect(M, y, halfW, 38, 3, 3, 'F');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(...MUTED);
-  doc.text('PREPARED FOR', M + 5, y + 7);
+  doc.text('FROM', M + 5, y + 7);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
+  doc.setFontSize(11);
   doc.setTextColor(...NAVY);
-  doc.text(quote.customer_name, M + 5, y + 15);
+  doc.text(company.company_name || '', M + 5, y + 15);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
+  doc.setFontSize(9);
+  doc.setTextColor(...MUTED);
+  let coY = y + 22;
+  if (company.company_phone || company.company_email) {
+    const co = [company.company_phone, company.company_email].filter(Boolean).join('  ·  ');
+    doc.text(doc.splitTextToSize(co, halfW - 10)[0], M + 5, coY);
+    coY += 6;
+  }
+  if (company.company_address) {
+    doc.text(doc.splitTextToSize(company.company_address, halfW - 10)[0], M + 5, coY);
+  }
+
+  // RIGHT: PREPARED FOR (customer)
+  const rx = M + halfW + 5;
+  doc.setFillColor(...LIGHT);
+  doc.roundedRect(rx, y, halfW, 38, 3, 3, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...MUTED);
+  doc.text('PREPARED FOR', rx + 5, y + 7);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...NAVY);
+  doc.text(quote.customer_name, rx + 5, y + 15);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
   doc.setTextColor(...MUTED);
   const contactParts = [quote.customer_phone, quote.customer_email].filter(Boolean).join('  ·  ');
-  doc.text(contactParts, M + 5, y + 22);
+  if (contactParts) doc.text(contactParts, rx + 5, y + 22);
 
-  y += 36;
+  y += 46;
 
   // ── Line items table ──────────────────────────────────────────────────────
   autoTable(doc, {

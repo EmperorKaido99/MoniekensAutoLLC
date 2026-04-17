@@ -7,6 +7,7 @@ import Badge from '@/components/ui/Badge';
 import QuoteActions from '@/components/quotes/QuoteActions';
 import { formatCurrency } from '@/lib/utils/formatCurrency';
 import type { Quote, QuoteStatus } from '@/types/quote';
+import { DEFAULT_COMPANY } from '@/types/settings';
 
 const TYPE_LABELS: Record<string, string> = {
   export: 'Vehicle Export', container: 'Container Transport', towing: 'Local Towing',
@@ -18,12 +19,10 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
   if (!session) redirect('/login');
 
   const { id } = await params;
-  const { data: quote } = await supabase
-    .from('quotes')
-    .select('*')
-    .eq('id', id)
-    .eq('user_id', session.user.id)
-    .single();
+  const [{ data: quote }, { data: company }] = await Promise.all([
+    supabase.from('quotes').select('*').eq('id', id).eq('user_id', session.user.id).single(),
+    supabase.from('company_settings').select('*').eq('user_id', session.user.id).single(),
+  ]);
 
   if (!quote) notFound();
 
@@ -92,7 +91,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
         )}
 
         {/* Actions */}
-        <QuoteActions quote={q} userId={session.user.id} />
+        <QuoteActions quote={q} userId={session.user.id} company={company ?? DEFAULT_COMPANY} />
       </div>
 
       <BottomNav />
