@@ -6,6 +6,7 @@ import type { Quote, QuoteStatus } from '@/types/quote';
 import type { CompanySettings } from '@/types/settings';
 import { generateQuotePDF } from '@/lib/pdf/generateQuotePDF';
 import { generateQRDataUrl } from '@/lib/qr';
+import { downloadBlob, fetchLogoDataUrl, uploadQuotePdfInBackground } from '@/lib/pdf/helpers';
 import Button from '@/components/ui/Button';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import QRModal from '@/components/quotes/QRModal';
@@ -23,77 +24,44 @@ export default function QuoteActions({ quote, userId, company }: Props) {
   const [showQR,        setShowQR]        = useState(false);
   const [pdfError,      setPdfError]      = useState<string | null>(null);
 
-  /** Returns a signed URL for the PDF, generating + uploading it first if needed. */
-  async function getOrGeneratePdfSignedUrl(): Promise<string> {
-    let pdfPath = quote.pdf_url;
+  /** Regenerates the PDF client-side from the existing quote data. */
+  async function buildPdfBlob(): Promise<Blob> {
+    const qrPayload = quote.qr_code_data ?? `${window.location.origin}/quotes/${quote.id}`;
+    const [qrDataUrl, logoDataUrl] = await Promise.all([
+      generateQRDataUrl(qrPayload),
+      fetchLogoDataUrl(),
+    ]);
 
-    if (!pdfPath) {
-      // Generate the PDF client-side from existing quote data
-      const qrPayload = quote.qr_code_data ?? `${window.location.origin}/quotes/${quote.id}`;
-      const [qrDataUrl, logoDataUrl] = await Promise.all([
-        generateQRDataUrl(qrPayload),
-        fetchLogoDataUrl(),
-      ]);
-
-      if (!quote.qr_code_data) {
-        const supabase = createClient();
-        await supabase.from('quotes').update({ qr_code_data: qrPayload }).eq('id', quote.id);
-      }
-
-      const pdfBlob = generateQuotePDF(
-        {
-          quote_number:   quote.quote_number,
-          quote_type:     quote.quote_type,
-          customer_name:  quote.customer_name,
-          customer_phone: quote.customer_phone,
-          customer_email: quote.customer_email,
-          line_items:     quote.line_items,
-          total:          quote.total,
-          notes:          quote.notes,
-          created_at:     quote.created_at,
-        },
-        company,
-        qrDataUrl,
-        logoDataUrl,
-      );
-
-      const base64  = await blobToBase64(pdfBlob);
-      const pdfRes  = await fetch('/api/generate-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quote_id: quote.id, pdf_base64: base64 }),
-      });
-      if (!pdfRes.ok) throw new Error('Failed to generate PDF');
-      const { path } = await pdfRes.json();
-      pdfPath = path as string;
+    if (!quote.qr_code_data) {
+      const supabase = createClient();
+      await supabase.from('quotes').update({ qr_code_data: qrPayload }).eq('id', quote.id);
     }
 
-    const urlRes = await fetch(`/api/documents/signed-url?path=${encodeURIComponent(pdfPath!)}`);
-    if (!urlRes.ok) throw new Error('Failed to get download link');
-    const { signedUrl, error: urlError } = await urlRes.json();
-    if (urlError || !signedUrl) throw new Error(urlError ?? 'Failed to get download link');
-    return signedUrl as string;
+    return generateQuotePDF(
+      {
+        quote_number:   quote.quote_number,
+        quote_type:     quote.quote_type,
+        customer_name:  quote.customer_name,
+        customer_phone: quote.customer_phone,
+        customer_email: quote.customer_email,
+        line_items:     quote.line_items,
+        total:          quote.total,
+        notes:          quote.notes,
+        created_at:     quote.created_at,
+      },
+      company,
+      qrDataUrl,
+      logoDataUrl,
+    );
   }
 
   async function handleDownloadPDF() {
     setPdfError(null);
     setLoadingPDF(true);
     try {
-      const signedUrl = await getOrGeneratePdfSignedUrl();
-      // Fetch the PDF bytes then trigger a real file-save via a blob URL.
-      // This avoids window.open (popup blocker) and forces a download instead
-      // of opening the PDF inline in the browser.
-      const res = await fetch(signedUrl);
-      if (!res.ok) throw new Error('Failed to fetch PDF file');
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = `Quote-${quote.quote_number}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(objectUrl);
+      const blob = await buildPdfBlob();
+      downloadBlob(blob, `Quote-${quote.quote_number}.pdf`);
+      if (!quote.pdf_url) uploadQuotePdfInBackground(quote.id, blob);
     } catch (err: any) {
       setPdfError(err?.message ?? 'Could not download PDF. Please try again.');
     } finally {
@@ -104,14 +72,13 @@ export default function QuoteActions({ quote, userId, company }: Props) {
   async function handlePrint() {
     setPdfError(null);
     setLoadingPrint(true);
-    // Pre-open now (user gesture) so popup blockers let us redirect it later
-    const newWindow = window.open('', '_blank');
     try {
-      const signedUrl = await getOrGeneratePdfSignedUrl();
-      if (newWindow) newWindow.location.href = signedUrl;
-      else window.open(signedUrl, '_blank');
+      const blob = await buildPdfBlob();
+      const url  = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      if (!quote.pdf_url) uploadQuotePdfInBackground(quote.id, blob);
     } catch (err: any) {
-      if (newWindow) newWindow.close();
       setPdfError(err?.message ?? 'Could not open PDF. Please try again.');
     } finally {
       setLoadingPrint(false);
@@ -183,27 +150,3 @@ export default function QuoteActions({ quote, userId, company }: Props) {
   );
 }
 
-async function fetchLogoDataUrl(): Promise<string | undefined> {
-  try {
-    const res = await fetch('/images/Logo.png');
-    if (!res.ok) return undefined;
-    const blob = await res.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload  = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(undefined);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return undefined;
-  }
-}
-
-async function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload  = () => resolve((reader.result as string).split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}

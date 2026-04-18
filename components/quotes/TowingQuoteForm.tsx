@@ -7,6 +7,7 @@ import type { LineItem } from '@/types/quote';
 import { buildQuoteNumber } from '@/lib/utils/generateQuoteNumber';
 import { generateQuotePDF } from '@/lib/pdf/generateQuotePDF';
 import { generateQRDataUrl } from '@/lib/qr';
+import { downloadBlob, fetchLogoDataUrl, uploadQuotePdfInBackground } from '@/lib/pdf/helpers';
 import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
 import Toast from '@/components/ui/Toast';
@@ -105,39 +106,27 @@ export default function TowingQuoteForm({ rates, company, userId }: Props) {
     if (!validate()) return;
     setGeneratingPDF(true);
 
-    const canShare = typeof navigator !== 'undefined' && !!navigator.share;
-    const newWindow = canShare ? null : window.open('', '_blank');
-
     try {
       const saved     = await saveQuote('sent');
       const qrPayload = `${window.location.origin}/quotes/${saved.id}`;
-      const qrDataUrl = await generateQRDataUrl(qrPayload);
-      const supabase  = createClient();
+
+      const [qrDataUrl, logoDataUrl] = await Promise.all([
+        generateQRDataUrl(qrPayload),
+        fetchLogoDataUrl(),
+      ]);
+
+      const supabase = createClient();
       await supabase.from('quotes').update({ qr_code_data: qrPayload }).eq('id', saved.id);
-      const logoDataUrl = await fetchLogoDataUrl();
+
       const pdfBlob = generateQuotePDF({ ...saved, created_at: saved.created_at }, company, qrDataUrl, logoDataUrl);
-      const base64  = await blobToBase64(pdfBlob);
-      const pdfRes  = await fetch('/api/generate-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quote_id: saved.id, pdf_base64: base64 }) });
-      if (!pdfRes.ok) throw new Error('PDF upload failed');
-      const urlRes = await fetch(`/api/documents/signed-url?path=quotes/${userId}/${saved.id}.pdf`);
-      if (!urlRes.ok) throw new Error('Failed to get download link');
-      const { signedUrl, error: urlError } = await urlRes.json();
-      if (urlError || !signedUrl) throw new Error(urlError ?? 'Failed to get download link');
-      if (canShare) {
-        try {
-          await navigator.share({ title: `Quote ${saved.quote_number}`, url: signedUrl });
-        } catch (shareErr: any) {
-          if (shareErr?.name !== 'AbortError') window.open(signedUrl, '_blank');
-        }
-      } else if (newWindow) {
-        newWindow.location.href = signedUrl;
-      } else {
-        window.open(signedUrl, '_blank');
-      }
-      router.push('/quotes');
+
+      downloadBlob(pdfBlob, `${saved.quote_number}.pdf`);
+      uploadQuotePdfInBackground(saved.id, pdfBlob);
+
+      setToast({ message: 'Quote downloaded', type: 'success' });
+      setTimeout(() => router.push('/quotes'), 1200);
     } catch (err) {
       console.error(err);
-      if (newWindow) newWindow.close();
       setToast({ message: 'Failed to generate PDF. Please try again.', type: 'error' });
     } finally {
       setGeneratingPDF(false);
@@ -204,27 +193,3 @@ export default function TowingQuoteForm({ rates, company, userId }: Props) {
   );
 }
 
-async function fetchLogoDataUrl(): Promise<string | undefined> {
-  try {
-    const res = await fetch('/images/Logo.png');
-    if (!res.ok) return undefined;
-    const blob = await res.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload  = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(undefined);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return undefined;
-  }
-}
-
-async function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload  = () => resolve((reader.result as string).split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}

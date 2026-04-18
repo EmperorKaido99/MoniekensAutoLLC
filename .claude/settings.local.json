@@ -18,7 +18,8 @@
       "Bash(taskkill /F /IM node.exe)",
       "Bash(taskkill:*)",
       "Bash(cmd /c \"taskkill /F /PID 12116\")",
-      "Bash(cmd /c \"taskkill /F /PID 22564\")"
+      "Bash(cmd /c \"taskkill /F /PID 22564\")",
+      "Bash(node -e \"require\\(''brace-expansion''\\)\")"
     ]
   },
   "enabledPlugins": {
