@@ -5,12 +5,10 @@ import { createClient } from '@/lib/supabase/client';
 import type { Quote, QuoteStatus } from '@/types/quote';
 import type { CompanySettings } from '@/types/settings';
 import { generateQuotePDF } from '@/lib/pdf/generateQuotePDF';
-import { generateQRDataUrl } from '@/lib/qr';
 import { downloadBlob, fetchLogoDataUrl, uploadQuotePdfInBackground } from '@/lib/pdf/helpers';
 import Button from '@/components/ui/Button';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import QRModal from '@/components/quotes/QRModal';
-import { FileDown, Printer, CheckCircle, Trash2, QrCode } from 'lucide-react';
+import { FileDown, Printer, CheckCircle, Trash2 } from 'lucide-react';
 
 interface Props { quote: Quote; userId: string; company: CompanySettings; }
 
@@ -21,22 +19,11 @@ export default function QuoteActions({ quote, userId, company }: Props) {
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting,      setDeleting]      = useState(false);
-  const [showQR,        setShowQR]        = useState(false);
   const [pdfError,      setPdfError]      = useState<string | null>(null);
 
   /** Regenerates the PDF client-side from the existing quote data. */
   async function buildPdfBlob(): Promise<Blob> {
-    const qrPayload = quote.qr_code_data ?? `${window.location.origin}/quotes/${quote.id}`;
-    const [qrDataUrl, logoDataUrl] = await Promise.all([
-      generateQRDataUrl(qrPayload),
-      fetchLogoDataUrl(),
-    ]);
-
-    if (!quote.qr_code_data) {
-      const supabase = createClient();
-      await supabase.from('quotes').update({ qr_code_data: qrPayload }).eq('id', quote.id);
-    }
-
+    const logoDataUrl = await fetchLogoDataUrl();
     return generateQuotePDF(
       {
         quote_number:   quote.quote_number,
@@ -50,7 +37,6 @@ export default function QuoteActions({ quote, userId, company }: Props) {
         created_at:     quote.created_at,
       },
       company,
-      qrDataUrl,
       logoDataUrl,
     );
   }
@@ -112,11 +98,6 @@ export default function QuoteActions({ quote, userId, company }: Props) {
         {pdfError && (
           <p className="text-sm text-danger text-center">{pdfError}</p>
         )}
-        {quote.qr_code_data && (
-          <Button variant="secondary" size="lg" fullWidth onClick={() => setShowQR(true)}>
-            <QrCode size={18} /> View QR Code
-          </Button>
-        )}
         {quote.status !== 'paid' && (
           <Button variant="primary" size="lg" fullWidth loading={loadingStatus} onClick={handleMarkPaid}>
             <CheckCircle size={18} /> Mark as Paid
@@ -138,14 +119,6 @@ export default function QuoteActions({ quote, userId, company }: Props) {
         loading={deleting}
       />
 
-      {quote.qr_code_data && (
-        <QRModal
-          open={showQR}
-          onClose={() => setShowQR(false)}
-          qrPayload={quote.qr_code_data}
-          quoteNumber={quote.quote_number}
-        />
-      )}
     </>
   );
 }

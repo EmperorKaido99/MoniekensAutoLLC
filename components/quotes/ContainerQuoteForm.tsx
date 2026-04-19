@@ -6,7 +6,6 @@ import type { RateSettings, CompanySettings } from '@/types/settings';
 import type { LineItem } from '@/types/quote';
 import { buildQuoteNumber } from '@/lib/utils/generateQuoteNumber';
 import { generateQuotePDF } from '@/lib/pdf/generateQuotePDF';
-import { generateQRDataUrl } from '@/lib/qr';
 import { downloadBlob, fetchLogoDataUrl, uploadQuotePdfInBackground } from '@/lib/pdf/helpers';
 import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
@@ -96,18 +95,9 @@ export default function ContainerQuoteForm({ rates, company, userId }: Props) {
     setGeneratingPDF(true);
 
     try {
-      const saved     = await saveQuote('sent');
-      const qrPayload = `${window.location.origin}/quotes/${saved.id}`;
-
-      const [qrDataUrl, logoDataUrl] = await Promise.all([
-        generateQRDataUrl(qrPayload),
-        fetchLogoDataUrl(),
-      ]);
-
-      const supabase = createClient();
-      await supabase.from('quotes').update({ qr_code_data: qrPayload }).eq('id', saved.id);
-
-      const pdfBlob = generateQuotePDF({ ...saved, created_at: saved.created_at }, company, qrDataUrl, logoDataUrl);
+      const saved       = await saveQuote('sent');
+      const logoDataUrl = await fetchLogoDataUrl();
+      const pdfBlob     = generateQuotePDF({ ...saved, created_at: saved.created_at }, company, logoDataUrl);
 
       downloadBlob(pdfBlob, `${saved.quote_number}.pdf`);
       uploadQuotePdfInBackground(saved.id, pdfBlob);

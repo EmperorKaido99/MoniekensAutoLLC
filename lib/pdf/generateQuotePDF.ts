@@ -29,7 +29,7 @@ export interface QuotePDFInput {
   created_at:     string;
 }
 
-export function generateQuotePDF(quote: QuotePDFInput, company: CompanySettings, qrDataUrl?: string, logoDataUrl?: string): Blob {
+export function generateQuotePDF(quote: QuotePDFInput, company: CompanySettings, logoDataUrl?: string): Blob {
   const doc  = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const PW   = 210;
   const PH   = 297;
@@ -41,11 +41,23 @@ export function generateQuotePDF(quote: QuotePDFInput, company: CompanySettings,
   doc.setFillColor(...NAVY);
   doc.rect(0, 0, PW, 56, 'F');
 
-  // Logo (if available)
-  const logoSize = 24;
-  const textX    = logoDataUrl ? M + logoSize + 5 : M;
+  // Logo (if available) — fits inside a 32×22mm reserved area at natural aspect ratio
+  const LOGO_W = 32;
+  const LOGO_H = 22;
+  let textX = M;
   if (logoDataUrl) {
-    doc.addImage(logoDataUrl, 'PNG', M, 5, logoSize, logoSize);
+    try {
+      const props = doc.getImageProperties(logoDataUrl);
+      const scale = Math.min(LOGO_W / props.width, LOGO_H / props.height);
+      const lw    = props.width  * scale;
+      const lh    = props.height * scale;
+      const lx    = M;
+      const ly    = 5 + (LOGO_H - lh) / 2; // vertically centred in reserved area
+      doc.addImage(logoDataUrl, 'PNG', lx, ly, lw, lh);
+      textX = M + LOGO_W + 6;
+    } catch {
+      // fall through — render text from M as if no logo
+    }
   }
 
   // Company name
@@ -189,18 +201,6 @@ export function generateQuotePDF(quote: QuotePDFInput, company: CompanySettings,
     const lines = doc.splitTextToSize(quote.notes, CW);
     doc.text(lines, M, y + 12);
     y += 12 + lines.length * 5 + 8;
-  }
-
-  // ── Footer band ───────────────────────────────────────────────────────────
-  // ── QR code (above footer) ────────────────────────────────────────────────
-  if (qrDataUrl) {
-    const qrSize = 28;
-    const qrX    = PW - M - qrSize;
-    const qrY    = PH - 24 - qrSize;
-    doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
-    doc.setFontSize(6);
-    doc.setTextColor(...MUTED);
-    doc.text('Scan to view', qrX + qrSize / 2, PH - 25, { align: 'center' });
   }
 
   // ── Footer band ───────────────────────────────────────────────────────────
